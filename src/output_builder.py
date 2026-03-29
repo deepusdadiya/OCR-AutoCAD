@@ -15,6 +15,7 @@ def build_text_candidates_df(items: List[TextItem]) -> pd.DataFrame:
                 "source": t.source,
                 "region_type": t.region_type,
                 "text_type": t.text_type,
+                "label_category": t.label_category,
                 "score": round(t.score, 2),
                 "x0": round(t.x0, 2),
                 "y0": round(t.y0, 2),
@@ -58,6 +59,7 @@ def build_label_room_matches_df(
             {
                 "label_id": i,
                 "extracted_label": text.text,
+                "label_category": text.label_category,
                 "score": round(text.score, 2),
                 "pdf_cx": round(text.cx, 2),
                 "pdf_cy": round(text.cy, 2),

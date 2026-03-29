@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 
 @dataclass
@@ -12,6 +12,7 @@ class TextItem:
     source: str = "pdf_word"
     region_type: str = "unknown"      # drawing / metadata / border / unknown
     text_type: str = "unknown"        # room_label / dimension / metadata / symbol / unknown
+    label_category: str = "unknown"   # space / service / unknown
     score: float = 0.0
 
     @property

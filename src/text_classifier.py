@@ -26,6 +26,16 @@ REJECT_TOKENS = {
     "F", "FOR", "B1", "B2", "B3", "B4", "B5", "EXE", "UP", "DN", "RWS", "ELV"
 }
 
+SPACE_HINTS = {
+    "LOBBY", "PASSAGE", "STAIRCASE", "PANTRY",
+    "TOILET", "LIFT", "A.H.U", "AHU", "OFFICE"
+}
+
+SERVICE_HINTS = {
+    "CO-RA", "CO-FA", "FHC", "ELEC", "CHW",
+    "PLUMBING", "SHAFT", "PRESSURIZATION"
+}
+
 
 def _in_bbox(point: tuple[int, int], bbox: tuple[int, int, int, int]) -> bool:
     x, y, w, h = bbox
@@ -132,8 +142,29 @@ def classify_text_item(item: TextItem) -> TextItem:
     return item
 
 
+def assign_label_category(item: TextItem) -> TextItem:
+    t = item.text.upper()
+
+    space_hits = sum(1 for h in SPACE_HINTS if h in t)
+    service_hits = sum(1 for h in SERVICE_HINTS if h in t)
+
+    if space_hits > service_hits and space_hits > 0:
+        item.label_category = "space"
+    elif service_hits > space_hits and service_hits > 0:
+        item.label_category = "service"
+    else:
+        item.label_category = "unknown"
+
+    return item
+
+
 def classify_text_items(items: List[TextItem]) -> List[TextItem]:
-    return [classify_text_item(i) for i in items]
+    out = []
+    for item in items:
+        item = classify_text_item(item)
+        item = assign_label_category(item)
+        out.append(item)
+    return out
 
 
 def keep_room_label_candidates(items: List[TextItem]) -> List[TextItem]:

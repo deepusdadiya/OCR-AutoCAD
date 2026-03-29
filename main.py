@@ -30,6 +30,22 @@ def main():
     print("\nTop room label candidates:")
     print(text_df[text_df["text_type"] == "room_label"][["text", "region_type", "score"]].head(40))
 
+    print("\nTop space-label candidates:")
+    print(
+        text_df[
+            (text_df["text_type"] == "room_label") &
+            (text_df["label_category"] == "space")
+        ][["text", "region_type", "label_category", "score"]].head(40)
+    )
+    
+    print("\nTop service-label candidates:")
+    print(
+        text_df[
+            (text_df["text_type"] == "room_label") &
+            (text_df["label_category"] == "service")
+        ][["text", "region_type", "label_category", "score"]].head(40)
+    )
+
     print("\nLabel-first matches:")
     print(label_matches_df.head(25))
 
