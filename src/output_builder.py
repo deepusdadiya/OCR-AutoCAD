@@ -94,3 +94,51 @@ def build_rooms_df(rooms: List[RoomCandidate]) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+def build_final_output_df(label_matches_df: pd.DataFrame) -> pd.DataFrame:
+    df = label_matches_df.copy()
+
+    # keep only likely space labels
+    df = df[df["label_category"] == "space"].copy()
+
+    # remove duplicates by label name, keeping highest score row
+    df = df.sort_values(by="score", ascending=False)
+    df = df.drop_duplicates(subset=["extracted_label"], keep="first")
+
+    # optional cleanup of labels
+    df["Name"] = df["extracted_label"].astype(str).str.strip()
+
+    # leave area blank for now
+    df["Area (sqmm)"] = ""
+
+    final_df = df[["Name", "Area (sqmm)"]].copy()
+    final_df = final_df.sort_values(by="Name").reset_index(drop=True)
+
+    return final_df
+
+
+def build_final_debug_df(label_matches_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Internal version with debug fields.
+    """
+    df = label_matches_df.copy()
+    df = df[df["label_category"] == "space"].copy()
+    df = df.sort_values(by="score", ascending=False)
+    df = df.drop_duplicates(subset=["extracted_label"], keep="first")
+
+    df["Name"] = df["extracted_label"].astype(str).str.strip()
+    df["Area (sqmm)"] = ""
+
+    return df[
+        [
+            "Name",
+            "Area (sqmm)",
+            "label_category",
+            "score",
+            "matched_room_id",
+            "matched_room_area_px",
+            "pdf_cx",
+            "pdf_cy",
+        ]
+    ].reset_index(drop=True)

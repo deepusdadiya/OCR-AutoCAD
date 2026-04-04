@@ -1,0 +1,17 @@
+Name,Area (sqmm),label_category,score,matched_room_id,matched_room_area_px,pdf_cx,pdf_cy
+TOILET/PANTRY,,space,70.0,,,963.84,1054.64
+STAIRCASE-2,,space,51.0,9.0,44939.0,990.8,842.58
+STAIRCASE-1,,space,51.0,,,577.76,987.3
+M.TOILET,,space,49.0,,,953.24,1138.46
+H.TOILET,,space,49.0,,,956.36,1209.29
+PASSAGE,,space,49.0,,,631.52,1135.35
+F.TOILET,,space,49.0,,,1003.28,1262.86
+PANTRY,,space,48.0,,,1015.4,1084.62
+LOBBY-2,,space,47.0,,,656.63,630.22
+LOBBY.,,space,47.0,,,989.28,660.53
+LOBBY-3,,space,47.0,,,630.08,1051.69
+LOBBY-4,,space,47.0,,,953.6,764.17
+LOBBY-1,,space,47.0,7.0,19429.0,793.79,1069.66
+LOBBY,,space,47.0,,,696.8,990.62
+LIFT,,space,46.0,,,878.96,684.66
+A.H.U,,space,45.0,,,978.56,587.21
