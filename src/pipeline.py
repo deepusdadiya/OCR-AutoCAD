@@ -19,7 +19,13 @@ from src.text_grouping import group_words_into_phrases, deduplicate_phrases
 from src.text_classifier import assign_region_type, classify_text_items, keep_room_label_candidates
 from src.geometry_extraction import detect_room_candidates, draw_room_candidates
 from src.assignment import assign_labels_to_rooms
-from src.output_builder import build_text_candidates_df, build_rooms_df, build_label_room_matches_df
+from src.output_builder import (
+    build_text_candidates_df,
+    build_rooms_df,
+    build_label_room_matches_df,
+    build_final_output_df,
+    build_final_debug_df,
+)
 from src.evaluate import compare_with_expected
 
 
@@ -83,7 +89,8 @@ def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[st
         img_h=full_image.size[1],
         crop_offset=crop_offset,
     )
-
+    final_df = build_final_output_df(label_matches_df)
+    final_debug_df = build_final_debug_df(label_matches_df)
     comparison_df = None
     if expected_csv_path:
         comparison_df = compare_with_expected(rooms_df.copy(), expected_csv_path)
@@ -104,4 +111,6 @@ def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[st
         "label_matches_df": label_matches_df,
         "comparison_df": comparison_df,
         "crop_offset": crop_offset,
+        "final_df": final_df,
+        "final_debug_df": final_debug_df,
     }
