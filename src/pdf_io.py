@@ -35,11 +35,25 @@ def extract_pdf_words(pdf_path: str, page_number: int = 0) -> List[TextItem]:
 
     out = []
     for w in words:
-        x0, y0, x1, y1, text, *_ = w
+        # x0, y0, x1, y1, text, block_no, line_no, word_no
+        x0, y0, x1, y1, text, block_no, line_no, word_no = w
         text = str(text).strip()
         if not text:
             continue
-        out.append(TextItem(text=text, x0=x0, y0=y0, x1=x1, y1=y1, source="pdf_word"))
+
+        item = TextItem(
+            text=text,
+            x0=x0,
+            y0=y0,
+            x1=x1,
+            y1=y1,
+            source="pdf_word",
+        )
+        item.block_no = int(block_no)
+        item.line_no = int(line_no)
+        item.word_no = int(word_no)
+        out.append(item)
+
     return out
 
 

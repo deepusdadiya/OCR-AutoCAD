@@ -14,27 +14,24 @@ DIMENSION_PATTERNS = [
 METADATA_KEYWORDS = {
     "ARCHITECT", "CONSULTANT", "ENGINEERING", "PROJECT", "EMAIL", "ADDRESS",
     "DRAWING", "DOCUMENT", "REVISION", "DATE", "SCALE", "DRAWN", "APPROVED",
-    "COPYRIGHT", "GENERAL", "NOTES", "MUMBAI", "DELHI", "PVT", "LTD"
-}
-
-ROOM_HINTS = {
-    "LIFT", "LOBBY", "PASSAGE", "AHU", "A.H.U", "STAIRCASE", "PANTRY",
-    "TOILET", "SHAFT", "ELEC", "PLUMBING", "FHC", "CHW", "CO-FA", "CO-RA"
-}
-
-REJECT_TOKENS = {
-    "F", "FOR", "B1", "B2", "B3", "B4", "B5", "EXE", "UP", "DN", "RWS", "ELV"
+    "COPYRIGHT", "GENERAL", "NOTES", "MUMBAI", "DELHI", "PVT", "LTD",
+    "BANK", "STREET", "BRELVI", "GHODA", "FORT", "HOUSE", "GMAIL",
+    "COMMERCIAL", "BUILDING", "ROAD", "WEST", "HIGHWAY", "SECTOR"
 }
 
 SPACE_HINTS = {
-    "LOBBY", "PASSAGE", "STAIRCASE", "PANTRY",
-    "TOILET", "LIFT", "A.H.U", "AHU", "OFFICE"
+    "LOBBY", "PASSAGE", "STAIRCASE", "PANTRY", "TOILET",
+    "LIFT", "A.H.U", "AHU", "OFFICE", "OBSERVATORY"
 }
 
 SERVICE_HINTS = {
-    "CO-RA", "CO-FA", "FHC", "ELEC", "CHW",
-    "PLUMBING", "SHAFT", "PRESSURIZATION"
+    "CO-RA", "CO-FA", "FHC", "ELEC", "CHW", "PLUMBING",
+    "SHAFT", "PRESSURIZATION", "RWS", "ELV"
 }
+
+FRAGMENT_ONLY = {"UP", "DN", "FOR", "EXE", "-", "1", "2", "3", "4", "5"}
+
+ALL_HINTS = SPACE_HINTS | SERVICE_HINTS
 
 
 def _in_bbox(point: tuple[int, int], bbox: tuple[int, int, int, int]) -> bool:
@@ -70,7 +67,8 @@ def _looks_like_dimension(text: str) -> bool:
 
 
 def classify_text_item(item: TextItem) -> TextItem:
-    t = item.text.strip().upper()
+    t = re.sub(r"\s+", " ", item.text.strip().upper())
+    t = t.replace("OBSERVATORY FOR", "FOR OBSERVATORY").strip()
     words = t.split()
 
     if not t:
@@ -78,7 +76,12 @@ def classify_text_item(item: TextItem) -> TextItem:
         item.score = 0.0
         return item
 
-    if len(t) > 60 or len(words) > 5:
+    if len(words) == 1 and t in FRAGMENT_ONLY:
+        item.text_type = "symbol"
+        item.score = 0.0
+        return item
+
+    if len(t) > 100 or len(words) > 10:
         item.text_type = "metadata"
         item.score = 0.0
         return item
@@ -93,50 +96,47 @@ def classify_text_item(item: TextItem) -> TextItem:
         item.score = 0.0
         return item
 
-    if len(words) == 1 and t in REJECT_TOKENS:
-        item.text_type = "symbol"
-        item.score = 0.0
-        return item
-
     score = 0.0
 
     if item.region_type == "drawing":
         score += 20
     elif item.region_type == "border":
-        score += 4
+        score += 2
     else:
-        score -= 12
+        score -= 15
 
-    matched_hints = sum(1 for h in ROOM_HINTS if h in t)
-    score += matched_hints * 18
+    hint_hits = sum(1 for h in ALL_HINTS if h in t)
+    score += hint_hits * 14
 
     alpha_count = sum(c.isalpha() for c in t)
-    score += min(alpha_count, 10)
+    score += min(alpha_count, 12)
 
-    if len(words) == 1:
-        if matched_hints > 0:
-            score += 4
-        else:
-            score -= 8
-    elif len(words) <= 3:
+    if len(words) <= 8:
         score += 6
     else:
-        score -= 10
+        score -= 8
 
-    if re.search(r"\d{4,}", t):
-        score -= 20
+    if re.search(r"\bLIFT\s+[A-Z]\d+\b", t):
+        score += 10
+    if re.search(r"\b[FS]\s+LIFT\b", t):
+        score += 8
+    if re.search(r"\b[FS]\s+LOBBY\b", t):
+        score += 8
+    if "FOR OBSERVATORY" in t:
+        score += 8
+    if "PLUMBING SHAFT" in t:
+        score += 8
+    if "PRESSURIZATION SHAFT" in t:
+        score += 8
+    if "TOILET/PANTRY" in t:
+        score += 8
 
-    if all(w in REJECT_TOKENS for w in words):
-        score -= 20
-
-    if score >= 32:
+    if score >= 28:
         item.text_type = "room_label"
-    elif score >= 16:
+    elif score >= 14:
         item.text_type = "unknown"
-    elif item.region_type == "metadata":
-        item.text_type = "metadata"
     else:
-        item.text_type = "symbol"
+        item.text_type = "metadata" if item.region_type == "metadata" else "symbol"
 
     item.score = score
     return item
@@ -152,6 +152,8 @@ def assign_label_category(item: TextItem) -> TextItem:
         item.label_category = "space"
     elif service_hits > space_hits and service_hits > 0:
         item.label_category = "service"
+    elif space_hits == service_hits and space_hits > 0:
+        item.label_category = "space"
     else:
         item.label_category = "unknown"
 

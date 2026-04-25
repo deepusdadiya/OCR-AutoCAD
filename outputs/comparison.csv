@@ -6,7 +6,7 @@ CO-FA #1,1.1,CO-FA #1,,,,,,,,,,,,,False
 CO-FA #2,0.9,CO-FA #2,,,,,,,,,,,,,False
 CO-RA #1,1.1,CO-RA #1,,,,,,,,,,,,,False
 CO-RA #2,0.9,CO-RA #2,,,,,,,,,,,,,False
-ELEC,4.5,ELEC,6.0,ELEC,0.657,22081.0,841.0,2331.0,243.0,243.0,919.0,2494.0,ELEC | CO-RA | CO-FA,ELEC,True
+ELEC,4.5,ELEC,,,,,,,,,,,,,False
 ELV,0.95,ELV,,,,,,,,,,,,,False
 F LIFT,6.0,F LIFT,,,,,,,,,,,,,False
 F LOBBY,5.3,F LOBBY,,,,,,,,,,,,,False
@@ -19,7 +19,7 @@ LIFT B2,6.0,LIFT B2,,,,,,,,,,,,,False
 LIFT B3,6.0,LIFT B3,,,,,,,,,,,,,False
 LIFT B4,6.0,LIFT B4,,,,,,,,,,,,,False
 LIFT B5,6.0,LIFT B5,,,,,,,,,,,,,False
-LOBBY-1,87.1,LOBBY-1,7.0,LOBBY-1,0.671,19429.0,1666.0,2140.0,52.0,382.0,1691.0,2330.0,LOBBY-1,LOBBY-1,True
+LOBBY-1,87.1,LOBBY-1,,,,,,,,,,,,,False
 LOBBY-2,1.4,LOBBY-2,,,,,,,,,,,,,False
 LOBBY-3,16.4,LOBBY-3,,,,,,,,,,,,,False
 LOBBY-4,15.7,LOBBY-4,,,,,,,,,,,,,False
@@ -37,7 +37,7 @@ RWS,1.4,RWS,,,,,,,,,,,,,False
 S LIFT - 1,6.0,S LIFT - 1,,,,,,,,,,,,,False
 S LIFT - 2,6.0,S LIFT - 2,,,,,,,,,,,,,False
 STAIRCASE-1,32.1,STAIRCASE-1,,,,,,,,,,,,,False
-STAIRCASE-2,33.7,STAIRCASE-2,9.0,STAIRCASE-2,0.729,44939.0,2191.0,1335.0,213.0,213.0,2297.0,1441.0,STAIRCASE-2,STAIRCASE-2,True
+STAIRCASE-2,33.7,STAIRCASE-2,9.0,STAIRCASE-2,0.8,44939.0,2191.0,1335.0,213.0,213.0,2297.0,1441.0,STAIRCASE-2,STAIRCASE-2,True
 STR. PRESSURIZATION SHAFT #1,1.4,STR. PRESSURIZATION SHAFT #1,,,,,,,,,,,,,False
 STR. PRESSURIZATION SHAFT #2,2.6,STR. PRESSURIZATION SHAFT #2,,,,,,,,,,,,,False
 TOILET/PANTRY EXE,1.7,TOILET/PANTRY EXE,,,,,,,,,,,,,False

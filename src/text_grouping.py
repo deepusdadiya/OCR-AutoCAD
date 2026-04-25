@@ -5,8 +5,7 @@ from src.models import TextItem
 
 
 STOP_TOKENS = {
-    "UP", "DN", "FOR", "F", "S", "N", "E", "W",
-    "B1", "B2", "B3", "B4", "B5", "EXE", "RWS", "ELV", "DCAB"
+    "UP", "DN", "EXE"
 }
 
 
@@ -18,6 +17,7 @@ def normalize_text(text: str) -> str:
     t = t.replace("M TOILET", "M.TOILET")
     t = t.replace("H TOILET", "H.TOILET")
     t = t.replace("STAIR CASE", "STAIRCASE")
+    t = t.replace("SHATFT", "SHAFT")
     return t
 
 
@@ -29,9 +29,7 @@ def _clean_phrase_tokens(tokens: List[str]) -> List[str]:
             continue
         if tok in STOP_TOKENS:
             continue
-        if re.fullmatch(r"\d+(\.\d+)?", tok):
-            continue
-        if re.fullmatch(r"\d{3,}", tok):
+        if re.fullmatch(r"\d{4,}", tok):
             continue
         out.append(tok)
     return out
