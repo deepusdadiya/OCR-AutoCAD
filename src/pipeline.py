@@ -6,6 +6,7 @@ from config import (
     DRAWING_REGION_PADDING,
 )
 from src.pdf_io import get_page_size, render_pdf_page
+from src.label_fusion import fuse_label_candidates
 from src.text_extraction import extract_text_items
 from src.page_analysis import detect_page_regions, draw_page_regions
 from src.text_block_reconstruction import reconstruct_text_blocks, deduplicate_blocks
@@ -44,10 +45,11 @@ def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[st
 
     classified_items = classify_text_items(reconstructed_blocks)
     label_candidates = keep_room_label_candidates(classified_items)
+    fused_label_candidates = fuse_label_candidates(label_candidates)
 
     text_df = build_text_candidates_df(classified_items)
-    final_client_df = build_final_client_instances_df(label_candidates)
-    final_client_debug_df = build_final_client_instances_debug_df(label_candidates)
+    final_client_df = build_final_client_instances_df(fused_label_candidates)
+    final_client_debug_df = build_final_client_instances_debug_df(fused_label_candidates)
 
     return {
         "full_image": full_image,
@@ -60,4 +62,5 @@ def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[st
         "text_df": text_df,
         "final_client_df": final_client_df,
         "final_client_debug_df": final_client_debug_df,
+        "fused_label_candidates": fused_label_candidates,
     }
