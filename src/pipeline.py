@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, Any
 
 from config import (
@@ -5,6 +6,7 @@ from config import (
     MIN_DRAWING_COMPONENT_AREA,
     DRAWING_REGION_PADDING,
 )
+from src.evaluate import compare_with_expected
 from src.pdf_io import get_page_size, render_pdf_page
 from src.label_fusion import fuse_label_candidates
 from src.text_extraction import extract_text_items
@@ -50,6 +52,9 @@ def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[st
     text_df = build_text_candidates_df(classified_items)
     final_client_df = build_final_client_instances_df(fused_label_candidates)
     final_client_debug_df = build_final_client_instances_debug_df(fused_label_candidates)
+    comparison_df = None
+    if expected_csv_path and Path(expected_csv_path).exists():
+        comparison_df = compare_with_expected(final_client_df, expected_csv_path)
 
     return {
         "full_image": full_image,
@@ -63,4 +68,5 @@ def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[st
         "final_client_df": final_client_df,
         "final_client_debug_df": final_client_debug_df,
         "fused_label_candidates": fused_label_candidates,
+        "comparison_df": comparison_df,
     }

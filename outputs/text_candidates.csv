@@ -1,145 +1,155 @@
-text_id,text,source,region_type,text_type,label_category,score,x0,y0,x1,y1,cx,cy,block_no,line_no,word_no
-1,1,pdf_block,border,symbol,unknown,0.0,1531.93,231.92,1579.4,258.22,1555.67,245.07,40,0,0
-2,2,pdf_block,drawing,symbol,unknown,0.0,1531.45,522.68,1578.92,548.98,1555.19,535.83,45,0,0
-3,CO-RA,pdf_block,drawing,room_label,service,44.0,853.95,534.32,859.89,554.26,856.92,544.29,32,0,0
-4,CO-FA,pdf_block,drawing,room_label,service,44.0,891.63,534.68,897.57,553.9,894.6,544.29,33,0,0
-5,A.H.U,pdf_block,drawing,room_label,space,43.0,974.6,576.8,982.51,597.62,978.56,587.21,10,0,0
-6,LOBBY-2,pdf_block,drawing,room_label,space,45.0,650.07,604.28,663.18,656.15,656.63,630.22,36,0,0
-7,LOBBY. PRESSURIZATION,pdf_block,drawing,room_label,space,66.0,986.31,650.6,992.25,717.8,989.28,684.2,31,0,0
-8,PASSAGE,pdf_block,drawing,room_label,space,47.0,1024.16,665.12,1032.07,700.53,1028.12,682.83,19,0,0
-9,S LIFT - 2,pdf_block,drawing,room_label,space,53.0,943.16,671.36,951.07,701.54,947.12,686.45,30,0,0
-10,S LIFT - 1,pdf_block,drawing,room_label,space,53.0,875.0,672.2,882.91,702.38,878.96,687.29,29,0,0
-11,SHAFT,pdf_block,drawing,room_label,service,45.0,979.11,676.72,985.05,693.53,982.08,685.13,31,1,0
-12,LOBBY-4,pdf_block,drawing,room_label,space,45.0,949.64,748.52,957.55,779.83,953.6,764.17,9,0,0
-13,STR. PRESSURIZATION,pdf_block,drawing,room_label,service,52.0,553.68,785.39,611.74,791.33,582.71,788.36,0,0,0
-14,SHAFT,pdf_block,drawing,room_label,service,45.0,575.0,792.59,591.81,798.53,583.41,795.56,1,0,0
-15,FHC,pdf_block,drawing,room_label,service,43.0,944.04,800.51,955.79,806.45,949.92,803.48,14,0,0
-16,STAIRCASE-2,pdf_block,drawing,room_label,space,49.0,986.84,818.96,994.75,866.19,990.8,842.58,35,0,0
-17,UP,pdf_block,drawing,symbol,unknown,0.0,1006.92,863.42,1019.25,873.31,1013.09,868.36,5,1,0
-18,DN,pdf_block,drawing,symbol,unknown,0.0,937.68,863.54,952.36,873.43,945.02,868.48,5,0,0
-19,OBSERVATORY,pdf_block,drawing,room_label,space,51.0,873.2,883.76,881.11,939.3,877.16,911.53,17,1,0
-20,LIFT FOR,pdf_block,drawing,room_label,space,47.0,881.96,896.36,889.87,926.72,885.92,911.54,17,0,0
-21,3,pdf_block,drawing,symbol,unknown,0.0,1531.93,898.16,1579.4,924.46,1555.67,911.31,45,1,0
-22,F LIFT,pdf_block,drawing,room_label,space,53.0,691.64,906.68,699.55,925.36,695.6,916.02,4,0,0
-23,OFFICE,pdf_block,drawing,room_label,space,46.0,1181.55,928.16,1194.66,972.92,1188.11,950.54,100,0,0
-24,UP,pdf_block,drawing,symbol,unknown,0.0,542.04,961.7,554.37,971.59,548.21,966.64,3,1,0
-25,DN,pdf_block,drawing,symbol,unknown,0.0,609.24,961.82,623.92,971.71,616.58,966.76,3,0,0
-26,OBSERVATORY,pdf_block,drawing,room_label,space,51.0,873.2,961.88,881.11,1017.42,877.16,989.65,16,1,0
-27,STAIRCASE-1,pdf_block,drawing,room_label,space,49.0,573.8,963.68,581.71,1010.91,577.76,987.3,34,1,0
-28,F LOBBY,pdf_block,drawing,room_label,space,54.0,692.84,972.44,700.75,1002.77,696.8,987.6,7,0,0
-29,LIFT FOR,pdf_block,drawing,room_label,space,47.0,881.96,974.48,889.87,1004.84,885.92,989.66,16,0,0
-30,TOILET/PANTRY EXE,pdf_block,drawing,room_label,space,74.0,960.87,1033.64,966.81,1087.26,963.84,1060.45,25,0,0
-31,LOBBY-3,pdf_block,drawing,room_label,space,45.0,626.12,1036.04,634.03,1067.35,630.08,1051.69,8,0,0
-32,STR. PRESSURIZATION,pdf_block,drawing,room_label,service,52.0,981.6,1036.43,1039.66,1042.37,1010.63,1039.4,26,0,0
-33,PLUMBING,pdf_block,drawing,room_label,service,48.0,933.27,1042.04,939.21,1071.95,936.24,1056.99,24,0,0
-34,SHAFT,pdf_block,drawing,room_label,service,45.0,1002.92,1043.63,1019.73,1049.57,1011.33,1046.6,27,0,0
-35,LOBBY-1,pdf_block,drawing,room_label,space,45.0,787.23,1043.72,800.34,1095.59,793.79,1069.66,2,0,0
-36,SHAFT,pdf_block,drawing,room_label,service,45.0,926.07,1048.76,932.01,1065.56,929.04,1057.16,24,1,0
-37,LIFT B1,pdf_block,drawing,room_label,space,55.0,877.28,1056.32,885.19,1080.09,881.24,1068.2,6,1,0
-38,PANTRY,pdf_block,drawing,room_label,space,46.0,1011.44,1070.0,1019.35,1099.25,1015.4,1084.62,38,0,0
-39,LOBBY. PRESSURIZATION,pdf_block,drawing,room_label,space,66.0,653.4,1088.03,720.6,1093.97,687.0,1091.0,12,0,0
-40,FHC,pdf_block,drawing,room_label,service,43.0,585.51,1093.88,591.45,1105.63,588.48,1099.76,15,0,0
-41,SHAFT,pdf_block,drawing,room_label,service,45.0,679.4,1095.23,696.21,1101.17,687.81,1098.2,13,0,0
-42,ELEC,pdf_block,drawing,room_label,service,44.0,544.35,1116.2,550.29,1130.13,547.32,1123.16,21,0,0
-43,PASSAGE,pdf_block,drawing,room_label,space,47.0,627.56,1117.64,635.47,1153.05,631.52,1135.35,18,0,0
-44,M.TOILET,pdf_block,drawing,room_label,space,47.0,949.28,1122.08,957.19,1154.84,953.24,1138.46,39,1,0
-45,CHW,pdf_block,drawing,room_label,service,43.0,585.51,1132.28,591.45,1146.85,588.48,1139.57,34,0,0
-46,LIFT B4,pdf_block,drawing,room_label,space,55.0,692.96,1133.6,700.87,1157.37,696.92,1145.48,4,2,0
-47,LIFT B2,pdf_block,drawing,room_label,space,55.0,877.16,1133.6,885.07,1157.37,881.12,1145.48,6,0,0
-48,CO-RA,pdf_block,drawing,room_label,service,44.0,544.35,1165.04,550.29,1184.98,547.32,1175.01,21,1,0
-49,CO-FA,pdf_block,drawing,room_label,service,44.0,579.87,1165.4,585.81,1184.62,582.84,1175.01,28,0,0
-50,H.TOILET,pdf_block,drawing,room_label,space,47.0,952.4,1193.84,960.31,1224.74,956.36,1209.29,39,0,0
-51,LIFT B5,pdf_block,drawing,room_label,space,55.0,692.96,1211.84,700.87,1235.61,696.92,1223.72,4,1,0
-52,LIFT B3,pdf_block,drawing,room_label,space,55.0,877.16,1212.32,885.07,1236.09,881.12,1224.2,6,2,0
-53,A.H.U,pdf_block,drawing,room_label,space,43.0,593.48,1226.48,601.39,1247.3,597.44,1236.89,11,0,0
-54,F.TOILET,pdf_block,drawing,room_label,space,47.0,999.32,1248.2,1007.23,1277.53,1003.28,1262.86,37,0,0
-55,RWS,pdf_block,drawing,room_label,service,43.0,887.43,1275.2,893.37,1287.45,890.4,1281.33,23,0,0
-56,LOBBY. PRESSURIZATION,pdf_block,drawing,room_label,space,66.0,655.44,1275.59,722.64,1281.53,689.04,1278.56,20,0,0
-57,ELV,pdf_block,drawing,room_label,service,43.0,850.47,1275.8,856.41,1285.89,853.44,1280.84,22,0,0
-58,4,pdf_block,drawing,symbol,unknown,0.0,1531.45,1276.76,1578.92,1303.06,1555.19,1289.91,45,2,0
-59,5,pdf_block,border,symbol,unknown,0.0,1532.29,1566.44,1579.76,1592.74,1556.03,1579.59,45,3,0
-60,C,pdf_block,border,symbol,unknown,9.0,753.13,1735.64,800.6,1774.23,776.87,1754.94,42,0,0
-61,D,pdf_block,border,symbol,unknown,9.0,1009.69,1736.36,1057.16,1771.68,1033.43,1754.02,41,0,0
-62,A,pdf_block,border,symbol,unknown,9.0,195.61,1737.32,243.08,1772.45,219.35,1754.88,43,0,0
-63,E,pdf_block,border,symbol,unknown,9.0,1310.65,1740.92,1358.12,1766.36,1334.39,1753.64,46,0,0
-64,B,pdf_block,border,symbol,unknown,9.0,496.93,1742.0,544.4,1769.25,520.67,1755.62,44,0,0
-65,ARCH-COLUMN,pdf_block,border,unknown,unknown,18.0,1466.31,1821.56,1486.08,1972.54,1476.2,1897.05,107,0,0
-66,ARCH-BRICK WALL-2,pdf_block,border,unknown,unknown,20.0,1530.15,1821.56,1549.92,2014.86,1540.04,1918.21,106,0,0
-67,ARCH-BRICK WALL-1,pdf_block,border,unknown,unknown,20.0,1563.87,1821.56,1583.64,2014.86,1573.76,1918.21,105,0,0
-68,ARCH-RCC WALL-2,pdf_block,border,unknown,unknown,19.0,1594.11,1821.56,1613.89,2003.43,1604.0,1912.5,104,0,0
-69,ARCH-RCC WALL-1,pdf_block,border,unknown,unknown,19.0,1639.59,1821.56,1659.36,2003.43,1649.48,1912.5,103,0,0
-70,EXTERNAL GLASS WINDOW,pdf_block,border,unknown,unknown,20.0,1369.83,1821.68,1389.6,2079.92,1379.72,1950.8,102,0,0
-71,INTERNAL GLASS WINDOW,pdf_block,border,unknown,unknown,20.0,1412.91,1821.92,1432.68,2071.14,1422.8,1946.53,101,0,0
-72,REV.,pdf_block,border,symbol,unknown,11.0,833.17,2171.48,842.77,2189.13,837.97,2180.3,75,0,0
-73,BPSAMRAT@TECHFOURSOLUTIONS.COM,pdf_block,border,unknown,unknown,20.0,255.28,2176.88,262.26,2310.57,258.77,2243.72,83,4,0
-74,"EMAIL - PUNEETB@TECHFOURSOLUTIONS.COM,",pdf_block,border,metadata,unknown,0.0,263.92,2177.0,270.9,2331.66,267.41,2254.33,83,3,0
-75,"INDUSTRIAL ESTATES, NEW DELHI -",pdf_block,border,metadata,unknown,0.0,272.44,2177.0,279.42,2285.77,275.93,2231.39,83,2,0
-76,"EMAIL - DESIGNSINTEGRAL@GMAIL.COM,",pdf_block,border,metadata,unknown,0.0,170.68,2177.36,177.66,2315.04,174.17,2246.2,84,4,0
-77,NEW DELHI -,pdf_block,border,metadata,unknown,0.0,179.32,2177.36,186.3,2217.64,182.81,2197.5,84,3,0
-78,PVT LTD - LANDSCAPE,pdf_block,border,metadata,unknown,0.0,196.24,2177.36,203.22,2251.73,199.73,2214.54,84,1,0
-79,INTEGRAL DESIGNS INTERNATIONAL STUDIO,pdf_block,border,unknown,unknown,20.0,204.76,2177.36,211.74,2320.06,208.25,2248.71,84,0,0
-80,"ADDRESS - A-16, 1ST FLOOR, MOHAN COOPERATIVE,",pdf_block,border,metadata,unknown,0.0,280.84,2177.36,287.82,2351.92,284.33,2264.64,83,1,0
-81,TECHFOUR ENGINEERING SOLUTIONS PVT. LTD -MEPF,pdf_block,border,metadata,unknown,0.0,289.36,2177.48,296.34,2350.72,292.85,2264.1,83,0,0
-82,ACCOUNTS@INTEGRALDESIGNS.IN,pdf_block,border,unknown,unknown,20.0,162.04,2177.84,169.02,2292.19,165.53,2235.02,84,5,0
-83,"ADDRESS - E-90, ANAND NIKETAN,",pdf_block,border,metadata,unknown,0.0,187.72,2177.84,194.7,2289.77,191.21,2233.8,84,2,0
-84,LANDSCAPE CONSULTANT,pdf_block,border,metadata,unknown,0.0,225.91,2177.96,233.64,2279.29,229.77,2228.63,85,0,0
-85,PROJECT MANAGEMENT CONSULTANT,pdf_block,border,metadata,unknown,0.0,586.75,2177.96,594.48,2326.09,590.61,2252.02,89,0,0
-86,PROJECT NAME,pdf_block,border,metadata,unknown,0.0,767.23,2177.96,774.96,2238.5,771.09,2208.23,91,0,0
-87,SERVICES CONSULTANT,pdf_block,border,metadata,unknown,0.0,316.15,2178.2,323.88,2271.81,320.01,2225.0,86,0,0
-88,STRUCTURAL CONSULTANT,pdf_block,border,metadata,unknown,0.0,406.39,2178.2,414.12,2286.82,410.25,2232.51,87,0,0
-89,CLIENT,pdf_block,border,unknown,unknown,14.0,676.99,2178.2,684.72,2205.68,680.85,2191.94,90,0,0
-90,DRAWING TITLE,pdf_block,border,metadata,unknown,0.0,137.23,2178.44,144.96,2238.98,141.09,2208.71,79,0,0
-91,PURPOSE OF ISSUE,pdf_block,border,unknown,unknown,20.0,817.39,2178.44,825.12,2254.45,821.25,2216.45,78,0,0
-92,NOTE :-,pdf_block,border,symbol,unknown,12.0,1082.28,2178.44,1090.87,2209.93,1086.57,2194.19,80,0,0
-93,ARCHITECTURAL CONSULTANT,pdf_block,border,metadata,unknown,0.0,496.51,2178.56,504.24,2297.92,500.37,2238.24,88,0,0
-94,KEY PLAN,pdf_block,border,unknown,unknown,15.0,1517.89,2178.56,1524.8,2208.79,1521.35,2193.67,70,0,0
-95,DHRUVA22MAHIMTURA@GMAIL.COM,pdf_block,border,metadata,unknown,0.0,335.44,2179.16,342.42,2305.59,338.93,2242.37,82,4,0
-96,"BRELVI MARG, KALA GHODA FORT, MUMBAI -",pdf_block,border,metadata,service,0.0,352.48,2179.16,359.46,2330.26,355.97,2254.71,82,2,0
-97,MAHIMTURA CONSULTANTS PVT. LTD,pdf_block,border,metadata,unknown,0.0,369.4,2179.4,376.38,2299.72,372.89,2239.56,82,0,0
-98,"ADDRESS - 3RD FLOOR, UNIQUE HOUSE, 25, SYED ABDULLAH",pdf_block,border,metadata,unknown,0.0,361.0,2179.64,367.98,2377.77,364.49,2278.71,82,1,0
-99,"EMAIL - BELAPUR@MAHIMTURA.NET,",pdf_block,border,metadata,unknown,0.0,343.96,2179.76,350.94,2298.18,347.45,2238.97,82,3,0
-100,NORTH,pdf_block,border,symbol,unknown,13.0,26.46,2180.0,33.17,2201.36,29.82,2190.68,74,1,0
-101,WITH THE ABOVE WILL BE CONTRACTORS LIABILITY.,pdf_block,border,unknown,unknown,20.0,1536.36,2181.2,1541.73,2305.68,1539.04,2243.44,68,0,0
-102,"ATTENTION PRIOR TO COMMENCEMENT OF WORK, FAILURE TO COMPLY",pdf_block,border,symbol,unknown,6.0,1545.96,2181.2,1551.33,2353.47,1548.64,2267.34,67,0,0
-103,"DRAWING, ANY DISCREPANCIES SHALL BE BROUGHT TO ENGINEERS",pdf_block,border,metadata,unknown,0.0,1555.68,2181.2,1561.05,2344.94,1558.36,2263.07,64,0,0
-104,CONTRACTOR TO VERIFY THE DETAIL / INFORMATION GIVEN IN THIS,pdf_block,border,symbol,unknown,6.0,1565.4,2181.2,1570.77,2343.33,1568.08,2262.27,59,0,0
-105,CONSIDERED.,pdf_block,border,unknown,unknown,18.0,1578.24,2181.2,1583.61,2214.59,1580.92,2197.89,58,0,0
-106,"DO NOT SCALE THIS DRAWING, ONLY STATED DIMENSIONS ARE TO BE",pdf_block,border,metadata,unknown,0.0,1587.96,2181.2,1593.33,2348.68,1590.64,2264.94,63,0,0
-107,THE ABOVE CONSULTANT'S AUTHORITY.,pdf_block,border,metadata,unknown,0.0,1600.8,2181.2,1606.17,2277.21,1603.48,2229.2,69,0,0
-108,FORM EXCEPT FOR THE PURPOSE WHICH IT IS INTENDED WITHOUT,pdf_block,border,symbol,unknown,6.0,1610.52,2181.2,1615.89,2341.99,1613.2,2261.59,62,0,0
-109,IT IS NOT ALLOWED TO COPY OR REPRODUCE IT'S CONTENTS IN ANY,pdf_block,border,metadata,unknown,0.0,1620.24,2181.2,1625.61,2346.12,1622.92,2263.66,57,0,0
-110,TEL. 91-2661920.,pdf_block,border,symbol,unknown,11.0,1633.08,2181.2,1638.45,2217.54,1635.76,2199.37,65,0,0
-111,"29, BANK STREET, MUMBAI 400 023",pdf_block,border,metadata,unknown,0.0,1642.8,2181.2,1648.17,2252.81,1645.48,2217.01,60,0,0
-112,THIS DRAWING IS THE COPYRIGHT OF ARCHITECT HAFEEZ CONTRACTOR,pdf_block,border,metadata,unknown,0.0,1652.52,2181.2,1657.89,2331.86,1655.2,2256.53,61,0,0
-113,GENERAL NOTES :,pdf_block,border,metadata,unknown,0.0,1664.88,2181.2,1672.39,2251.34,1668.63,2216.27,66,0,0
-114,"COMPLEX AT MALLET BUNDER, MUMBAI",pdf_block,border,metadata,unknown,0.0,698.33,2181.44,708.05,2364.02,703.19,2272.73,81,1,0
-115,11.02.2026,pdf_block,border,symbol,unknown,8.0,73.21,2184.8,81.22,2222.84,77.21,2203.82,95,2,0
-116,JAWAHARLAL NEHRU,pdf_block,border,unknown,unknown,20.0,623.69,2185.64,633.41,2283.94,628.55,2234.79,92,0,0
-117,"811, 8TH FLOOR, THE GATEWAY COMMERCIAL BUILDING",pdf_block,border,metadata,unknown,0.0,456.66,2187.2,463.23,2365.29,459.94,2276.24,55,0,0
-118,"AT ATMOSPHERE, GOREGAON MULUND LINK ROAD,NEAR",pdf_block,border,metadata,unknown,0.0,448.74,2187.32,455.31,2364.69,452.02,2276.01,55,1,0
-119,N,pdf_block,border,symbol,unknown,9.0,21.97,2188.73,29.19,2194.15,25.58,2191.44,56,0,0
-120,"RUNWAL GREENS, MULUND WEST, MUMBAI - 400080.",pdf_block,border,metadata,unknown,0.0,440.82,2189.96,447.39,2362.21,444.1,2276.09,55,2,0
-121,"NAGAR, SECTOR 16, GURUGRAM, HARYANA",pdf_block,border,metadata,unknown,0.0,522.04,2190.32,529.02,2338.7,525.53,2264.51,93,1,0
-122,"R&D COMPLEX, NATIONAL HIGHWAY 8 CHANDER",pdf_block,border,metadata,unknown,0.0,530.44,2190.32,537.42,2355.6,533.93,2272.96,93,0,0
-123,A R C H I T E C T S & P L A N N E R S P V T. L T D.,pdf_block,border,metadata,unknown,0.0,465.19,2191.4,475.3,2361.78,470.24,2276.59,53,0,0
-124,36TH FLOOR - DG SHIPPING ARCH LAYOUT,pdf_block,border,unknown,unknown,20.0,112.65,2194.64,121.37,2354.58,117.01,2274.61,98,0,0
-125,PORT AUTHORITY,pdf_block,border,unknown,unknown,20.0,612.05,2195.48,621.77,2273.19,616.91,2234.33,92,1,0
-126,CONSTRUCTION OF JNPA OFFICE,pdf_block,border,room_label,space,34.0,710.21,2195.48,719.93,2349.39,715.07,2272.43,81,0,0
-127,DATE,pdf_block,border,metadata,unknown,0.0,88.38,2196.8,95.09,2212.83,91.74,2204.81,94,1,0
-128,DATE,pdf_block,border,metadata,unknown,0.0,833.17,2201.96,842.77,2220.09,837.97,2211.03,73,0,0
-129,VIJAY PATIL,pdf_block,border,unknown,unknown,18.0,40.86,2203.76,50.25,2244.99,45.55,2224.37,97,0,0
-130,PLAN2SCAPES,pdf_block,border,unknown,unknown,18.0,479.06,2206.64,492.44,2280.14,485.75,2243.39,54,0,0
-131,DRAWN,pdf_block,border,metadata,unknown,0.0,56.1,2212.52,62.81,2235.22,59.46,2223.87,96,0,0
-132,JNPA-EIL-CDG-ARCH-0041,pdf_block,border,unknown,unknown,20.0,5.24,2216.48,16.15,2336.23,10.69,2276.35,71,0,0
-133,SARVESH@PLANOSCAPES.COM,pdf_block,border,unknown,unknown,20.0,433.0,2231.72,439.13,2321.09,436.06,2276.4,55,3,0
-134,DOCUMENT NUMBER,pdf_block,border,metadata,unknown,0.0,26.46,2254.04,33.17,2316.46,29.82,2285.25,74,0,0
-135,SHT. SIZE,pdf_block,border,unknown,unknown,15.0,88.38,2262.08,95.09,2290.8,91.74,2276.44,94,0,0
-136,A1,pdf_block,border,symbol,unknown,9.0,72.98,2270.96,82.0,2281.99,77.49,2276.47,95,0,0
-137,DESCRIPTION.,pdf_block,border,unknown,unknown,19.0,833.17,2286.08,842.77,2331.4,837.97,2308.74,73,1,0
-138,SARVESH NANDGIRIKAR,pdf_block,border,unknown,unknown,20.0,40.86,2287.88,50.25,2372.95,45.55,2330.41,72,0,0
-139,APPROVED,pdf_block,border,metadata,unknown,0.0,56.22,2310.8,62.93,2344.19,59.58,2327.5,76,0,0
-140,1:100,pdf_block,border,symbol,unknown,8.0,72.98,2337.44,82.0,2360.0,77.49,2348.72,95,1,0
-141,SCALE,pdf_block,border,metadata,unknown,0.0,88.38,2338.4,95.09,2358.1,91.74,2348.25,94,2,0
-142,C:\USERS\AAKASHDEEP\DESKTOP\JNPA\(NO SUBJECT) (7)\69CB9FC9-F7FC-453C-A686-579B1B7DAB48.PNG,pdf_block,border,unknown,unknown,20.0,306.64,2345.72,307.43,2377.13,307.04,2361.43,99,0,0
-143,REVISION,pdf_block,border,metadata,unknown,0.0,26.46,2350.04,33.17,2378.76,29.82,2364.4,74,2,0
-144,R0,pdf_block,border,symbol,unknown,9.0,2.88,2351.6,20.05,2373.55,11.46,2362.57,77,0,0
+text_id,text,source,region_type,text_type,label_category,score,page_number,font_size,orientation,x0,y0,x1,y1,cx,cy,block_no,line_no,word_no
+1,1,pdf_line,border,symbol,unknown,0.0,0,47.47,vertical,1531.93,231.92,1579.4,258.22,1555.67,245.07,40,0,0
+2,9442,pdf_line,drawing,symbol,unknown,0.0,0,35.72,vertical,1472.56,360.68,1508.29,440.13,1490.42,400.41,47,0,0
+3,2,pdf_line,drawing,symbol,unknown,0.0,0,47.47,vertical,1531.45,522.68,1578.92,548.98,1555.19,535.83,45,0,0
+4,CO-RA,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,853.95,534.32,859.89,554.26,856.92,544.29,32,0,0
+5,CO-FA,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,891.63,534.68,897.57,553.9,894.6,544.29,33,0,0
+6,A.H.U,pdf_line,drawing,room_label,short_label,54.0,0,7.91,vertical,974.6,576.8,982.51,597.62,978.56,587.21,10,0,0
+7,LOBBY-2,pdf_line,drawing,room_label,qualified_label,52.0,0,13.11,vertical,650.07,604.28,663.18,656.15,656.63,630.22,36,0,0
+8,LOBBY. PRESSURIZATION,pdf_line,drawing,room_label,qualified_label,58.0,0,5.93,vertical,986.31,650.6,992.25,717.8,989.28,684.2,31,0,0
+9,PASSAGE,pdf_line,drawing,room_label,label,62.0,0,7.91,vertical,1024.16,665.12,1032.07,700.53,1028.12,682.83,19,0,0
+10,S LIFT - 2,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,943.16,671.36,951.07,701.54,947.12,686.45,30,0,0
+11,S LIFT - 1,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,875.0,672.2,882.91,702.38,878.96,687.29,29,0,0
+12,13325,pdf_line,drawing,symbol,unknown,0.0,0,35.72,vertical,1472.56,672.8,1508.29,772.11,1490.42,722.46,47,1,0
+13,SHAFT,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,979.11,675.08,985.05,693.53,982.08,684.3,31,1,0
+14,LOBBY-4,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,949.64,748.52,957.55,779.83,953.6,764.17,9,0,0
+15,STR. PRESSURIZATION,pdf_line,drawing,room_label,qualified_label,56.0,0,5.93,horizontal,553.68,785.39,611.74,791.33,582.71,788.36,0,0,0
+16,SHAFT,pdf_line,drawing,room_label,short_label,56.0,0,5.93,horizontal,573.36,792.59,591.81,798.53,582.58,795.56,1,0,0
+17,FHC,pdf_line,drawing,room_label,short_label,56.0,0,5.93,horizontal,944.04,800.51,955.79,806.45,949.92,803.48,14,0,0
+18,STAIRCASE-2,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,986.84,818.96,994.75,866.19,990.8,842.58,35,0,0
+19,UP,pdf_line,drawing,symbol,unknown,0.0,0,9.89,horizontal,1006.92,863.42,1019.25,873.31,1013.09,868.36,5,1,0
+20,DN,pdf_line,drawing,symbol,unknown,0.0,0,9.89,horizontal,937.68,863.54,952.36,873.43,945.02,868.48,5,0,0
+21,47035,pdf_line,drawing,symbol,unknown,0.0,0,35.72,vertical,1435.6,863.84,1471.33,963.15,1453.46,913.5,50,0,0
+22,OBSERVATORY,pdf_line,drawing,room_label,label,62.0,0,7.91,vertical,873.2,883.76,881.11,939.3,877.16,911.53,17,1,0
+23,LIFT FOR,pdf_line,drawing,room_label,label,62.0,0,7.91,vertical,881.96,896.36,889.87,926.72,885.92,911.54,17,0,0
+24,3,pdf_line,drawing,symbol,unknown,0.0,0,47.47,vertical,1531.93,898.16,1579.4,924.46,1555.67,911.31,45,1,0
+25,F LIFT,pdf_line,drawing,room_label,label,62.0,0,7.91,vertical,691.64,906.68,699.55,925.36,695.6,916.02,4,0,0
+26,OFFICE,pdf_line,drawing,room_label,short_label,52.0,0,13.11,vertical,1181.55,928.16,1194.66,972.92,1188.11,950.54,100,0,0
+27,UP,pdf_line,drawing,symbol,unknown,0.0,0,9.89,horizontal,542.04,961.7,554.37,971.59,548.21,966.64,3,1,0
+28,DN,pdf_line,drawing,symbol,unknown,0.0,0,9.89,horizontal,609.24,961.82,623.92,971.71,616.58,966.76,3,0,0
+29,OBSERVATORY,pdf_line,drawing,room_label,label,62.0,0,7.91,vertical,873.2,961.88,881.11,1017.42,877.16,989.65,16,1,0
+30,STAIRCASE-1,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,573.8,963.68,581.71,1010.91,577.76,987.3,34,1,0
+31,F LOBBY,pdf_line,drawing,room_label,label,62.0,0,7.91,vertical,692.84,972.44,700.75,1002.77,696.8,987.6,7,0,0
+32,LIFT FOR,pdf_line,drawing,room_label,label,62.0,0,7.91,vertical,881.96,974.48,889.87,1004.84,885.92,989.66,16,0,0
+33,TOILET/PANTRY EXE,pdf_line,drawing,room_label,qualified_label,58.0,0,5.93,vertical,960.87,1033.64,966.81,1087.26,963.84,1060.45,25,0,0
+34,LOBBY-3,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,626.12,1036.04,634.03,1067.35,630.08,1051.69,8,0,0
+35,STR. PRESSURIZATION,pdf_line,drawing,room_label,qualified_label,56.0,0,5.93,horizontal,981.6,1036.43,1039.66,1042.37,1010.63,1039.4,26,0,0
+36,PLUMBING,pdf_line,drawing,room_label,label,58.0,0,5.93,vertical,933.27,1042.04,939.21,1071.95,936.24,1056.99,24,0,0
+37,SHAFT,pdf_line,drawing,room_label,short_label,56.0,0,5.93,horizontal,1001.28,1043.63,1019.73,1049.57,1010.5,1046.6,27,0,0
+38,LOBBY-1,pdf_line,drawing,room_label,qualified_label,52.0,0,13.11,vertical,787.23,1043.72,800.34,1095.59,793.79,1069.66,2,0,0
+39,SHAFT,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,926.07,1048.76,932.01,1065.56,929.04,1057.16,24,1,0
+40,13325,pdf_line,drawing,symbol,unknown,0.0,0,35.72,vertical,1472.56,1051.4,1508.29,1150.71,1490.42,1101.06,51,0,0
+41,LIFT B1,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,877.28,1056.32,885.19,1080.09,881.24,1068.2,6,1,0
+42,PANTRY,pdf_line,drawing,room_label,short_label,62.0,0,7.91,vertical,1011.44,1070.0,1019.35,1099.25,1015.4,1084.62,38,0,0
+43,LOBBY. PRESSURIZATION,pdf_line,drawing,room_label,qualified_label,56.0,0,5.93,horizontal,653.4,1088.03,720.6,1093.97,687.0,1091.0,12,0,0
+44,FHC,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,585.51,1093.88,591.45,1105.63,588.48,1099.76,15,0,0
+45,SHAFT,pdf_line,drawing,room_label,short_label,56.0,0,5.93,horizontal,677.76,1095.23,696.21,1101.17,686.98,1098.2,13,0,0
+46,ELEC,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,544.35,1116.2,550.29,1130.13,547.32,1123.16,21,0,0
+47,PASSAGE,pdf_line,drawing,room_label,label,62.0,0,7.91,vertical,627.56,1117.64,635.47,1153.05,631.52,1135.35,18,0,0
+48,M.TOILET,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,949.28,1122.08,957.19,1154.84,953.24,1138.46,39,1,0
+49,CHW,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,585.51,1132.28,591.45,1146.85,588.48,1139.57,34,0,0
+50,LIFT B4,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,692.96,1133.6,700.87,1157.37,696.92,1145.48,4,2,0
+51,LIFT B2,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,877.16,1133.6,885.07,1157.37,881.12,1145.48,6,0,0
+52,CO-RA,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,544.35,1165.04,550.29,1184.98,547.32,1175.01,21,1,0
+53,CO-FA,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,579.87,1165.4,585.81,1184.62,582.84,1175.01,28,0,0
+54,H.TOILET,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,952.4,1193.84,960.31,1224.74,956.36,1209.29,39,0,0
+55,LIFT B5,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,692.96,1211.84,700.87,1235.61,696.92,1223.72,4,1,0
+56,LIFT B3,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,877.16,1212.32,885.07,1236.09,881.12,1224.2,6,2,0
+57,A.H.U,pdf_line,drawing,room_label,short_label,54.0,0,7.91,vertical,593.48,1226.48,601.39,1247.3,597.44,1236.89,11,0,0
+58,F.TOILET,pdf_line,drawing,room_label,qualified_label,62.0,0,7.91,vertical,999.32,1248.2,1007.23,1277.53,1003.28,1262.86,37,0,0
+59,RWS,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,887.43,1275.2,893.37,1287.45,890.4,1281.33,23,0,0
+60,LOBBY. PRESSURIZATION,pdf_line,drawing,room_label,qualified_label,56.0,0,5.93,horizontal,655.44,1275.59,722.64,1281.53,689.04,1278.56,20,0,0
+61,ELV,pdf_line,drawing,room_label,short_label,58.0,0,5.93,vertical,850.47,1275.8,856.41,1285.89,853.44,1280.84,22,0,0
+62,4,pdf_line,drawing,symbol,unknown,0.0,0,47.47,vertical,1531.45,1276.76,1578.92,1303.06,1555.19,1289.91,45,2,0
+63,9442,pdf_line,drawing,symbol,unknown,0.0,0,35.72,vertical,1472.56,1386.2,1508.29,1465.65,1490.42,1425.93,47,2,0
+64,5,pdf_line,border,symbol,unknown,0.0,0,47.47,vertical,1532.29,1566.44,1579.76,1592.74,1556.03,1579.59,45,3,0
+65,39245,pdf_line,border,symbol,unknown,0.0,0,35.72,horizontal,734.04,1607.23,833.35,1642.96,783.7,1625.1,49,0,0
+66,9842,pdf_line,border,symbol,unknown,0.0,0,35.72,horizontal,344.88,1663.63,424.33,1699.36,384.61,1681.5,48,2,0
+67,9030,pdf_line,border,symbol,unknown,0.0,0,35.72,horizontal,612.96,1663.63,692.41,1699.36,652.69,1681.5,52,0,0
+68,9030,pdf_line,border,symbol,unknown,0.0,0,35.72,horizontal,869.52,1663.63,948.97,1699.36,909.25,1681.5,48,1,0
+69,9842,pdf_line,border,symbol,unknown,0.0,0,35.72,horizontal,1137.72,1663.63,1217.17,1699.36,1177.45,1681.5,48,0,0
+70,C,pdf_line,border,metadata,unknown,-1.0,0,47.47,vertical,753.13,1735.64,800.6,1774.23,776.87,1754.94,42,0,0
+71,D,pdf_line,border,metadata,unknown,-1.0,0,47.47,vertical,1009.69,1736.36,1057.16,1771.68,1033.43,1754.02,41,0,0
+72,A,pdf_line,border,metadata,unknown,-1.0,0,47.47,vertical,195.61,1737.32,243.08,1772.45,219.35,1754.88,43,0,0
+73,E,pdf_line,border,symbol,unknown,0.0,0,47.47,vertical,1310.65,1740.92,1358.12,1766.36,1334.39,1753.64,46,0,0
+74,B,pdf_line,border,metadata,unknown,-1.0,0,47.47,vertical,496.93,1742.0,544.4,1769.25,520.67,1755.62,44,0,0
+75,ARCH-COLUMN,pdf_line,border,metadata,unknown,4.0,0,19.78,vertical,1466.31,1821.56,1486.08,1972.54,1476.2,1897.05,107,0,0
+76,ARCH-BRICK WALL-2,pdf_line,border,metadata,unknown,4.0,0,19.78,vertical,1530.15,1821.56,1549.92,2014.86,1540.04,1918.21,106,0,0
+77,ARCH-BRICK WALL-1,pdf_line,border,metadata,unknown,4.0,0,19.78,vertical,1563.87,1821.56,1583.64,2014.86,1573.76,1918.21,105,0,0
+78,ARCH-RCC WALL-2,pdf_line,border,metadata,unknown,4.0,0,19.78,vertical,1594.11,1821.56,1613.89,2003.43,1604.0,1912.5,104,0,0
+79,ARCH-RCC WALL-1,pdf_line,border,metadata,unknown,4.0,0,19.78,vertical,1639.59,1821.56,1659.36,2003.43,1649.48,1912.5,103,0,0
+80,EXTERNAL GLASS WINDOW,pdf_line,border,metadata,unknown,4.0,0,19.78,vertical,1369.83,1821.68,1389.6,2079.92,1379.72,1950.8,102,0,0
+81,INTERNAL GLASS WINDOW,pdf_line,border,metadata,unknown,4.0,0,19.78,vertical,1412.91,1821.92,1432.68,2071.14,1422.8,1946.53,101,0,0
+82,REV.,pdf_line,border,metadata,unknown,11.0,0,9.6,vertical,833.17,2171.48,842.77,2189.13,837.97,2180.3,75,0,0
+83,BPSAMRAT@TECHFOURSOLUTIONS.COM,pdf_line,border,unknown,unknown,14.0,0,6.98,vertical,255.28,2176.88,262.26,2310.57,258.77,2243.72,83,4,0
+84,"EMAIL - PUNEETB@TECHFOURSOLUTIONS.COM,",pdf_line,border,metadata,unknown,0.0,0,6.98,vertical,263.92,2177.0,270.9,2331.66,267.41,2254.33,83,3,0
+85,"INDUSTRIAL ESTATES, NEW DELHI - 110044",pdf_line,border,metadata,unknown,4.0,0,6.98,vertical,272.44,2177.0,279.42,2310.9,275.93,2243.95,83,2,0
+86,"EMAIL - DESIGNSINTEGRAL@GMAIL.COM,",pdf_line,border,metadata,unknown,0.0,0,6.98,vertical,170.68,2177.36,177.66,2315.04,174.17,2246.2,84,4,0
+87,NEW DELHI - 110021,pdf_line,border,metadata,unknown,9.0,0,6.98,vertical,179.32,2177.36,186.3,2242.77,182.81,2210.07,84,3,0
+88,PVT LTD - LANDSCAPE,pdf_line,border,unknown,unknown,14.0,0,6.98,vertical,196.24,2177.36,203.22,2251.73,199.73,2214.54,84,1,0
+89,INTEGRAL DESIGNS INTERNATIONAL STUDIO,pdf_line,border,metadata,unknown,9.0,0,6.98,vertical,204.76,2177.36,211.74,2320.06,208.25,2248.71,84,0,0
+90,"ADDRESS - A-16, 1ST FLOOR, MOHAN COOPERATIVE,",pdf_line,border,metadata,unknown,-26.0,0,6.98,vertical,280.84,2177.36,287.82,2351.92,284.33,2264.64,83,1,0
+91,TECHFOUR ENGINEERING SOLUTIONS PVT. LTD -MEPF,pdf_line,border,metadata,unknown,0.0,0,6.98,vertical,289.36,2177.48,296.34,2350.72,292.85,2264.1,83,0,0
+92,ACCOUNTS@INTEGRALDESIGNS.IN,pdf_line,border,unknown,unknown,14.0,0,6.98,vertical,162.04,2177.84,169.02,2292.19,165.53,2235.02,84,5,0
+93,"ADDRESS - E-90, ANAND NIKETAN,",pdf_line,border,metadata,unknown,9.0,0,6.98,vertical,187.72,2177.84,194.7,2289.77,191.21,2233.8,84,2,0
+94,LANDSCAPE CONSULTANT,pdf_line,border,metadata,unknown,0.0,0,7.73,vertical,225.91,2177.96,233.64,2279.29,229.77,2228.63,85,0,0
+95,PROJECT MANAGEMENT CONSULTANT,pdf_line,border,metadata,unknown,0.0,0,7.73,vertical,586.75,2177.96,594.48,2326.09,590.61,2252.02,89,0,0
+96,PROJECT NAME,pdf_line,border,metadata,unknown,0.0,0,7.73,vertical,767.23,2177.96,774.96,2238.5,771.09,2208.23,91,0,0
+97,SERVICES CONSULTANT,pdf_line,border,metadata,unknown,0.0,0,7.73,vertical,316.15,2178.2,323.88,2271.81,320.01,2225.0,86,0,0
+98,STRUCTURAL CONSULTANT,pdf_line,border,metadata,unknown,0.0,0,7.73,vertical,406.39,2178.2,414.12,2286.82,410.25,2232.51,87,0,0
+99,CLIENT,pdf_line,border,metadata,unknown,0.0,0,7.73,vertical,676.99,2178.2,684.72,2205.68,680.85,2191.94,90,0,0
+100,DRAWING TITLE,pdf_line,border,metadata,unknown,0.0,0,7.73,vertical,137.23,2178.44,144.96,2238.98,141.09,2208.71,79,0,0
+101,PURPOSE OF ISSUE,pdf_line,border,unknown,unknown,14.0,0,7.73,vertical,817.39,2178.44,825.12,2254.45,821.25,2216.45,78,0,0
+102,NOTE :-,pdf_line,border,metadata,unknown,11.0,0,8.59,vertical,1082.28,2178.44,1090.87,2209.93,1086.57,2194.19,80,0,0
+103,ARCHITECTURAL CONSULTANT,pdf_line,border,metadata,unknown,0.0,0,7.73,vertical,496.51,2178.56,504.24,2297.92,500.37,2238.24,88,0,0
+104,KEY PLAN,pdf_line,border,unknown,unknown,14.0,0,6.91,vertical,1517.89,2178.56,1524.8,2208.79,1521.35,2193.67,70,0,0
+105,DHRUVA22MAHIMTURA@GMAIL.COM,pdf_line,border,unknown,unknown,14.0,0,6.98,vertical,335.44,2179.16,342.42,2305.59,338.93,2242.37,82,4,0
+106,"BRELVI MARG, KALA GHODA FORT, MUMBAI - 400001",pdf_line,border,metadata,unknown,-26.0,0,6.98,vertical,352.48,2179.16,359.46,2355.39,355.97,2267.28,82,2,0
+107,MAHIMTURA CONSULTANTS PVT. LTD,pdf_line,border,metadata,unknown,0.0,0,6.98,vertical,369.4,2179.4,376.38,2299.72,372.89,2239.56,82,0,0
+108,"ADDRESS - 3RD FLOOR, UNIQUE HOUSE, 25, SYED ABDULLAH",pdf_line,border,metadata,unknown,-26.0,0,6.98,vertical,361.0,2179.64,367.98,2377.77,364.49,2278.71,82,1,0
+109,"EMAIL - BELAPUR@MAHIMTURA.NET,",pdf_line,border,metadata,unknown,0.0,0,6.98,vertical,343.96,2179.76,350.94,2298.18,347.45,2238.97,82,3,0
+110,NORTH,pdf_line,border,unknown,unknown,14.0,0,6.72,vertical,26.46,2180.0,33.17,2201.36,29.82,2190.68,74,1,0
+111,WITH THE ABOVE WILL BE CONTRACTORS LIABILITY.,pdf_line,border,metadata,unknown,-30.0,0,5.38,vertical,1536.36,2181.2,1541.73,2305.68,1539.04,2243.44,68,0,0
+112,"ATTENTION PRIOR TO COMMENCEMENT OF WORK, FAILURE TO COMPLY",pdf_line,border,metadata,unknown,-30.0,0,5.38,vertical,1545.96,2181.2,1551.33,2353.47,1548.64,2267.34,67,0,0
+113,"DRAWING, ANY DISCREPANCIES SHALL BE BROUGHT TO ENGINEERS",pdf_line,border,metadata,unknown,0.0,0,5.38,vertical,1555.68,2181.2,1561.05,2344.94,1558.36,2263.07,64,0,0
+114,CONTRACTOR TO VERIFY THE DETAIL / INFORMATION GIVEN IN THIS,pdf_line,border,metadata,unknown,-30.0,0,5.38,vertical,1565.4,2181.2,1570.77,2343.33,1568.08,2262.27,59,0,0
+115,CONSIDERED.,pdf_line,border,metadata,unknown,10.0,0,5.38,vertical,1578.24,2181.2,1583.61,2214.59,1580.92,2197.89,58,0,0
+116,"DO NOT SCALE THIS DRAWING, ONLY STATED DIMENSIONS ARE TO BE",pdf_line,border,metadata,unknown,0.0,0,5.38,vertical,1587.96,2181.2,1593.33,2348.68,1590.64,2264.94,63,0,0
+117,THE ABOVE CONSULTANT'S AUTHORITY.,pdf_line,border,metadata,unknown,0.0,0,5.38,vertical,1600.8,2181.2,1606.17,2277.21,1603.48,2229.2,69,0,0
+118,FORM EXCEPT FOR THE PURPOSE WHICH IT IS INTENDED WITHOUT,pdf_line,border,metadata,unknown,-30.0,0,5.38,vertical,1610.52,2181.2,1615.89,2341.99,1613.2,2261.59,62,0,0
+119,IT IS NOT ALLOWED TO COPY OR REPRODUCE IT'S CONTENTS IN ANY,pdf_line,border,metadata,unknown,-30.0,0,5.38,vertical,1620.24,2181.2,1625.61,2346.12,1622.92,2263.66,57,0,0
+120,TEL. 91-2661920.,pdf_line,border,metadata,unknown,-6.0,0,5.38,vertical,1633.08,2181.2,1638.45,2217.54,1635.76,2199.37,65,0,0
+121,"29, BANK STREET, MUMBAI 400 023",pdf_line,border,metadata,unknown,0.0,0,5.38,vertical,1642.8,2181.2,1648.17,2252.81,1645.48,2217.01,60,0,0
+122,THIS DRAWING IS THE COPYRIGHT OF ARCHITECT HAFEEZ CONTRACTOR,pdf_line,border,metadata,unknown,0.0,0,5.38,vertical,1652.52,2181.2,1657.89,2331.86,1655.2,2256.53,61,0,0
+123,GENERAL NOTES :,pdf_line,border,metadata,unknown,0.0,0,7.51,vertical,1664.88,2181.2,1672.39,2251.34,1668.63,2216.27,66,0,0
+124,"COMPLEX AT MALLET BUNDER, MUMBAI",pdf_line,border,metadata,unknown,4.0,0,9.72,vertical,698.33,2181.44,708.05,2364.02,703.19,2272.73,81,1,0
+125,11.02.2026,pdf_line,border,symbol,unknown,0.0,0,8.02,vertical,73.21,2184.8,81.22,2222.84,77.21,2203.82,95,2,0
+126,JAWAHARLAL NEHRU,pdf_line,border,unknown,unknown,14.0,0,9.72,vertical,623.69,2185.64,633.41,2283.94,628.55,2234.79,92,0,0
+127,"811, 8TH FLOOR, THE GATEWAY COMMERCIAL BUILDING",pdf_line,border,metadata,unknown,-26.0,0,6.57,vertical,456.66,2187.2,463.23,2365.29,459.94,2276.24,55,0,0
+128,"AT ATMOSPHERE, GOREGAON MULUND LINK ROAD,NEAR",pdf_line,border,metadata,unknown,-9.0,0,6.57,vertical,448.74,2187.32,455.31,2364.69,452.02,2276.01,55,1,0
+129,N,pdf_line,border,symbol,unknown,0.0,0,5.56,vertical,21.97,2188.73,29.19,2194.15,25.58,2191.44,56,0,0
+130,"RUNWAL GREENS, MULUND WEST, MUMBAI - 400080.",pdf_line,border,metadata,unknown,-26.0,0,6.57,vertical,440.82,2189.96,447.39,2362.21,444.1,2276.09,55,2,0
+131,"NAGAR, SECTOR 16, GURUGRAM, HARYANA 122001",pdf_line,border,metadata,unknown,-9.0,0,6.98,vertical,522.04,2190.32,529.02,2363.83,525.53,2277.08,93,1,0
+132,"R&D COMPLEX, NATIONAL HIGHWAY 8 CHANDER",pdf_line,border,metadata,unknown,4.0,0,6.98,vertical,530.44,2190.32,537.42,2355.6,533.93,2272.96,93,0,0
+133,A R C H I T E C T S & P L A N N E R S P V T. L T D.,pdf_line,border,metadata,unknown,-30.0,0,10.11,vertical,465.19,2191.4,475.3,2361.78,470.24,2276.59,53,0,0
+134,36TH FLOOR - DG SHIPPING ARCH LAYOUT,pdf_line,border,metadata,unknown,-13.0,0,8.72,vertical,112.65,2194.64,121.37,2354.58,117.01,2274.61,98,0,0
+135,PORT AUTHORITY,pdf_line,border,unknown,unknown,14.0,0,9.72,vertical,612.05,2195.48,621.77,2273.19,616.91,2234.33,92,1,0
+136,CONSTRUCTION OF JNPA OFFICE,pdf_line,border,unknown,unknown,14.0,0,9.72,vertical,710.21,2195.48,719.93,2349.39,715.07,2272.43,81,0,0
+137,DATE,pdf_line,border,metadata,unknown,0.0,0,6.72,vertical,88.38,2196.8,95.09,2212.83,91.74,2204.81,94,1,0
+138,DATE,pdf_line,border,metadata,unknown,0.0,0,9.6,vertical,833.17,2201.96,842.77,2220.09,837.97,2211.03,73,0,0
+139,VIJAY PATIL,pdf_line,border,unknown,unknown,14.0,0,9.39,vertical,40.86,2203.76,50.25,2244.99,45.55,2224.37,97,0,0
+140,PLAN 2SCAPES,pdf_line,border,metadata,unknown,4.0,0,13.38,vertical,479.06,2206.64,492.44,2280.14,485.75,2243.39,54,0,0
+141,DRAWN,pdf_line,border,unknown,unknown,14.0,0,6.72,vertical,56.1,2212.52,62.81,2235.22,59.46,2223.87,96,0,0
+142,JNPA-EIL-CDG-ARCH-0041,pdf_line,border,metadata,unknown,10.0,0,10.92,vertical,5.24,2216.48,16.15,2336.23,10.69,2276.35,71,0,0
+143,SARVESH@PLANOSCAPES.COM,pdf_line,border,metadata,unknown,10.0,0,6.13,vertical,433.0,2231.72,439.13,2321.09,436.06,2276.4,55,3,0
+144,DOCUMENT NUMBER,pdf_line,border,metadata,unknown,0.0,0,6.72,vertical,26.46,2254.04,33.17,2316.46,29.82,2285.25,74,0,0
+145,SHT. SIZE,pdf_line,border,unknown,unknown,14.0,0,6.72,vertical,88.38,2262.08,95.09,2290.8,91.74,2276.44,94,0,0
+146,A1,pdf_line,border,metadata,unknown,9.0,0,9.02,vertical,72.98,2270.96,82.0,2281.99,77.49,2276.47,95,0,0
+147,DESCRIPTION.,pdf_line,border,unknown,unknown,14.0,0,9.6,vertical,833.17,2286.08,842.77,2331.4,837.97,2308.74,73,1,0
+148,SARVESH NANDGIRIKAR,pdf_line,border,unknown,unknown,14.0,0,9.39,vertical,40.86,2287.88,50.25,2372.95,45.55,2330.41,72,0,0
+149,APPROVED,pdf_line,border,metadata,unknown,0.0,0,6.72,vertical,56.22,2310.8,62.93,2344.19,59.58,2327.5,76,0,0
+150,1:100,pdf_line,border,symbol,unknown,0.0,0,9.02,vertical,72.98,2337.44,82.0,2360.0,77.49,2348.72,95,1,0
+151,SCALE,pdf_line,border,metadata,unknown,0.0,0,6.72,vertical,88.38,2338.4,95.09,2358.1,91.74,2348.25,94,2,0
+152,C:\USERS\AAKASHDEEP\DESKTOP\JNPA\(NO SUBJECT) (7)\69CB9FC9-F7FC-453C-A686-579B1B7DAB48.PNG,pdf_line,border,metadata,unknown,0.0,0,0.79,vertical,306.64,2345.72,307.43,2377.13,307.04,2361.43,99,0,0
+153,REVISION,pdf_line,border,metadata,unknown,0.0,0,6.72,vertical,26.46,2350.04,33.17,2378.76,29.82,2364.4,74,2,0
+154,R0,pdf_line,border,metadata,unknown,-1.0,0,17.17,vertical,2.88,2351.6,20.05,2373.55,11.46,2362.57,77,0,0

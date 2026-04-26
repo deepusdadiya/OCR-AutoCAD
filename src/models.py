@@ -17,6 +17,10 @@ class TextItem:
     block_no: int = -1
     line_no: int = -1
     word_no: int = -1
+    page_number: int = 0
+    font_size: float = 0.0
+    dir_x: float = 1.0
+    dir_y: float = 0.0
 
     @property
     def cx(self) -> float:
@@ -37,6 +41,10 @@ class TextItem:
     @property
     def bbox(self) -> Tuple[float, float, float, float]:
         return (self.x0, self.y0, self.x1, self.y1)
+
+    @property
+    def orientation(self) -> str:
+        return "vertical" if abs(self.dir_y) > abs(self.dir_x) else "horizontal"
 
 
 @dataclass

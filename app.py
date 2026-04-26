@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 
 from config import INPUT_PDF, EXPECTED_CSV
 from src.pipeline import run_pipeline
@@ -13,7 +12,7 @@ if st.button("Run Pipeline"):
         result = run_pipeline(str(INPUT_PDF), str(EXPECTED_CSV))
 
     tab1, tab2, tab3, tab4 = st.tabs(
-        ["Page Regions", "Text Candidates", "Room Candidates", "Expected vs Predicted"]
+        ["Page Regions", "Text Candidates", "Final Labels", "Expected vs Predicted"]
     )
 
     with tab1:
@@ -24,9 +23,7 @@ if st.button("Run Pipeline"):
         st.dataframe(result["text_df"], use_container_width=True)
 
     with tab3:
-        st.image(result["drawing_crop"], caption="Drawing crop", use_container_width=True)
-        st.image(result["room_debug"], caption="Room candidates", use_container_width=True)
-        st.dataframe(result["rooms_df"], use_container_width=True)
+        st.dataframe(result["final_client_debug_df"], use_container_width=True)
 
     with tab4:
         if result["comparison_df"] is not None:

@@ -1,18 +1,13 @@
 import re
-from collections import defaultdict
 import pandas as pd
 from typing import List
 
 from src.models import TextItem
+from src.text_utils import normalize_text
 
 
 def _norm(text: str) -> str:
-    t = str(text).strip().upper()
-    t = re.sub(r"\s+", " ", t)
-    t = t.replace("A H U", "A.H.U")
-    t = t.replace("SHATFT", "SHAFT")
-    t = t.replace("OBSERVATORY FOR", "FOR OBSERVATORY")
-    return t
+    return normalize_text(text)
 
 
 def _needs_numbering(name: str) -> bool:

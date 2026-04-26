@@ -1,37 +1,18 @@
-import re
+from statistics import median
 from typing import List
 
 from src.models import TextItem, PageRegions
 from src.pdf_io import pdf_to_img_coords
-
-
-DIMENSION_PATTERNS = [
-    r"^\d+(\.\d+)?$",
-    r"^\d{3,}$",
-    r"^\d+(\.\d+)?\s*(MM|CM|M|SQM|SQMM)$",
-]
-
-METADATA_KEYWORDS = {
-    "ARCHITECT", "CONSULTANT", "ENGINEERING", "PROJECT", "EMAIL", "ADDRESS",
-    "DRAWING", "DOCUMENT", "REVISION", "DATE", "SCALE", "DRAWN", "APPROVED",
-    "COPYRIGHT", "GENERAL", "NOTES", "MUMBAI", "DELHI", "PVT", "LTD",
-    "BANK", "STREET", "BRELVI", "GHODA", "FORT", "HOUSE", "GMAIL",
-    "COMMERCIAL", "BUILDING", "ROAD", "WEST", "HIGHWAY", "SECTOR"
-}
-
-SPACE_HINTS = {
-    "LOBBY", "PASSAGE", "STAIRCASE", "PANTRY", "TOILET",
-    "LIFT", "A.H.U", "AHU", "OFFICE", "OBSERVATORY"
-}
-
-SERVICE_HINTS = {
-    "CO-RA", "CO-FA", "FHC", "ELEC", "CHW", "PLUMBING",
-    "SHAFT", "PRESSURIZATION", "RWS", "ELV"
-}
-
-FRAGMENT_ONLY = {"UP", "DN", "FOR", "EXE", "-", "1", "2", "3", "4", "5"}
-
-ALL_HINTS = SPACE_HINTS | SERVICE_HINTS
+from src.text_utils import (
+    alpha_ratio,
+    has_alpha,
+    is_dimension_like,
+    is_generic_metadata,
+    is_short_fragment,
+    normalize_text,
+    punctuation_ratio,
+    token_count,
+)
 
 
 def _in_bbox(point: tuple[int, int], bbox: tuple[int, int, int, int]) -> bool:
@@ -61,113 +42,129 @@ def assign_region_type(
     return items
 
 
-def _looks_like_dimension(text: str) -> bool:
-    t = text.strip().upper()
-    return any(re.fullmatch(p, t) for p in DIMENSION_PATTERNS)
+def _classify_label_shape(text: str) -> str:
+    words = token_count(text)
+
+    if words == 1 and len(text) <= 6:
+        return "short_label"
+
+    if any(ch.isdigit() for ch in text) or any(ch in text for ch in "/-."):
+        return "qualified_label"
+
+    return "label"
 
 
-def classify_text_item(item: TextItem) -> TextItem:
-    t = re.sub(r"\s+", " ", item.text.strip().upper())
-    t = t.replace("OBSERVATORY FOR", "FOR OBSERVATORY").strip()
-    words = t.split()
+def classify_text_item(item: TextItem, drawing_font_median: float) -> TextItem:
+    t = normalize_text(item.text)
+    words = token_count(t)
+    alpha_share = alpha_ratio(t)
+    punct_share = punctuation_ratio(t)
+    char_count = len(t)
 
     if not t:
         item.text_type = "unknown"
         item.score = 0.0
+        item.label_category = "unknown"
         return item
 
-    if len(words) == 1 and t in FRAGMENT_ONLY:
+    if is_short_fragment(t):
         item.text_type = "symbol"
         item.score = 0.0
+        item.label_category = "unknown"
         return item
 
-    if len(t) > 100 or len(words) > 10:
-        item.text_type = "metadata"
+    if not has_alpha(t):
+        item.text_type = "dimension" if is_dimension_like(t) else "symbol"
         item.score = 0.0
+        item.label_category = "unknown"
         return item
 
-    if _looks_like_dimension(t):
+    if is_dimension_like(t):
         item.text_type = "dimension"
         item.score = 0.0
+        item.label_category = "unknown"
         return item
 
-    if any(k in t for k in METADATA_KEYWORDS):
+    if is_generic_metadata(t):
         item.text_type = "metadata"
         item.score = 0.0
+        item.label_category = "unknown"
         return item
 
     score = 0.0
 
     if item.region_type == "drawing":
-        score += 20
+        score += 28
     elif item.region_type == "border":
-        score += 2
+        score -= 20
     else:
-        score -= 15
+        score -= 35
 
-    hint_hits = sum(1 for h in ALL_HINTS if h in t)
-    score += hint_hits * 14
+    if 1 <= words <= 4:
+        score += 10
+    elif words <= 6:
+        score += 5
+    else:
+        score -= 12
 
-    alpha_count = sum(c.isalpha() for c in t)
-    score += min(alpha_count, 12)
+    if 2 <= char_count <= 30:
+        score += 8
+    elif char_count <= 40:
+        score += 3
+    else:
+        score -= 10
 
-    if len(words) <= 8:
-        score += 6
+    if alpha_share >= 0.55:
+        score += 8
+    elif alpha_share >= 0.35:
+        score += 3
     else:
         score -= 8
 
-    if re.search(r"\bLIFT\s+[A-Z]\d+\b", t):
-        score += 10
-    if re.search(r"\b[FS]\s+LIFT\b", t):
-        score += 8
-    if re.search(r"\b[FS]\s+LOBBY\b", t):
-        score += 8
-    if "FOR OBSERVATORY" in t:
-        score += 8
-    if "PLUMBING SHAFT" in t:
-        score += 8
-    if "PRESSURIZATION SHAFT" in t:
-        score += 8
-    if "TOILET/PANTRY" in t:
-        score += 8
+    if punct_share > 0.35:
+        score -= 8
+    elif punct_share > 0.2:
+        score -= 3
 
-    if score >= 28:
+    if drawing_font_median > 0 and item.font_size > 0:
+        ratio = min(item.font_size, drawing_font_median) / max(item.font_size, drawing_font_median)
+        if ratio >= 0.8:
+            score += 6
+        elif ratio >= 0.65:
+            score += 2
+        else:
+            score -= 4
+
+    if item.orientation == "vertical":
+        score += 2
+
+    item.score = round(score, 2)
+
+    if score >= 26:
         item.text_type = "room_label"
     elif score >= 14:
         item.text_type = "unknown"
     else:
-        item.text_type = "metadata" if item.region_type == "metadata" else "symbol"
+        item.text_type = "metadata" if item.region_type != "drawing" else "symbol"
 
-    item.score = score
-    return item
-
-
-def assign_label_category(item: TextItem) -> TextItem:
-    t = item.text.upper()
-
-    space_hits = sum(1 for h in SPACE_HINTS if h in t)
-    service_hits = sum(1 for h in SERVICE_HINTS if h in t)
-
-    if space_hits > service_hits and space_hits > 0:
-        item.label_category = "space"
-    elif service_hits > space_hits and service_hits > 0:
-        item.label_category = "service"
-    elif space_hits == service_hits and space_hits > 0:
-        item.label_category = "space"
-    else:
-        item.label_category = "unknown"
-
+    item.label_category = _classify_label_shape(t) if item.text_type == "room_label" else "unknown"
+    item.text = t
     return item
 
 
 def classify_text_items(items: List[TextItem]) -> List[TextItem]:
+    drawing_font_sizes = [
+        item.font_size
+        for item in items
+        if item.region_type == "drawing" and item.font_size > 0 and has_alpha(item.text)
+    ]
+    drawing_font_median = median(drawing_font_sizes) if drawing_font_sizes else 0.0
+
     out = []
     for item in items:
-        item = classify_text_item(item)
-        item = assign_label_category(item)
-        out.append(item)
+        out.append(classify_text_item(item, drawing_font_median))
     return out
 
 
 def keep_room_label_candidates(items: List[TextItem]) -> List[TextItem]:
-    return [i for i in items if i.text_type == "room_label"]
+    return [item for item in items if item.text_type == "room_label" and item.region_type == "drawing"]
