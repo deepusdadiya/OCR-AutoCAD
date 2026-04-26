@@ -31,8 +31,14 @@ if st.button("Run Pipeline"):
             f"Processed {result['page_count']} page(s). "
             f"This page has {page_result['text_candidate_count']} text candidates and "
             f"{page_result['final_label_count']} final labels. "
+            f"Resolved areas: {page_result['resolved_area_count']}/{page_result['final_label_count']}. "
             f"Extraction mode: {page_result['text_extraction_mode']}."
         )
+        if page_result["scale_ratio"] is not None:
+            st.caption(
+                f"Detected scale 1:{page_result['scale_ratio']:.0f}. "
+                f"Vector polygons: {page_result['area_polygon_count']}."
+            )
         if page_result["ocr_attempted"]:
             st.caption(
                 f"OCR available: {page_result['ocr_available']}. "

@@ -30,6 +30,9 @@ def build_final_client_instances_df(label_candidates: List[TextItem]) -> pd.Data
                 "page_number": item.page_number,
                 "cx": round(item.cx, 2),
                 "cy": round(item.cy, 2),
+                "area_value": item.area_value,
+                "area_method": item.area_method,
+                "area_confidence": round(item.area_confidence, 2),
                 "label_category": item.label_category,
             }
         )
@@ -54,7 +57,7 @@ def build_final_client_instances_df(label_candidates: List[TextItem]) -> pd.Data
 
     name_map = dict(final_names)
     df["Name"] = df.index.map(name_map)
-    df["Area (sqmm)"] = ""
+    df["Area (sqmm)"] = df["area_value"].where(df["area_value"].notna(), "")
 
     return df[["Name", "Area (sqmm)"]].copy()
 
@@ -69,13 +72,28 @@ def build_final_client_instances_debug_df(label_candidates: List[TextItem]) -> p
                 "page_number": item.page_number,
                 "cx": round(item.cx, 2),
                 "cy": round(item.cy, 2),
+                "area_value": item.area_value,
+                "area_method": item.area_method,
+                "area_confidence": round(item.area_confidence, 2),
                 "label_category": item.label_category,
             }
         )
 
     df = pd.DataFrame(rows)
     if df.empty:
-        return pd.DataFrame(columns=["Name", "Area (sqmm)", "page_number", "label_category", "score", "cx", "cy"])
+        return pd.DataFrame(
+            columns=[
+                "Name",
+                "Area (sqmm)",
+                "page_number",
+                "label_category",
+                "score",
+                "area_method",
+                "area_confidence",
+                "cx",
+                "cy",
+            ]
+        )
 
     df = df.sort_values(by=["base_name", "page_number", "cy", "cx"]).reset_index(drop=True)
 
@@ -92,6 +110,8 @@ def build_final_client_instances_debug_df(label_candidates: List[TextItem]) -> p
 
     name_map = dict(final_names)
     df["Name"] = df.index.map(name_map)
-    df["Area (sqmm)"] = ""
+    df["Area (sqmm)"] = df["area_value"].where(df["area_value"].notna(), "")
 
-    return df[["Name", "Area (sqmm)", "page_number", "label_category", "score", "cx", "cy"]].copy()
+    return df[
+        ["Name", "Area (sqmm)", "page_number", "label_category", "score", "area_method", "area_confidence", "cx", "cy"]
+    ].copy()

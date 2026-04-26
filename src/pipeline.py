@@ -6,6 +6,7 @@ from config import (
     MIN_DRAWING_COMPONENT_AREA,
     DRAWING_REGION_PADDING,
 )
+from src.area_calculation import estimate_page_label_areas
 from src.evaluate import compare_with_expected
 from src.pdf_io import get_page_count, get_page_size, render_pdf_page
 from src.label_fusion import fuse_label_candidates
@@ -48,6 +49,7 @@ def _run_page_pipeline(pdf_path: str, page_number: int) -> Dict[str, Any]:
     classified_items = classify_text_items(reconstructed_blocks)
     label_candidates = keep_room_label_candidates(classified_items)
     fused_label_candidates = fuse_label_candidates(label_candidates)
+    area_meta = estimate_page_label_areas(pdf_path, page_number, fused_label_candidates)
 
     return {
         "page_number": page_number,
@@ -61,6 +63,10 @@ def _run_page_pipeline(pdf_path: str, page_number: int) -> Dict[str, Any]:
         "vector_alpha_count": extraction_payload["vector_alpha_count"],
         "ocr_alpha_count": extraction_payload["ocr_alpha_count"],
         "ocr_rotation_hits": extraction_payload["ocr_rotation_hits"],
+        "scale_ratio": area_meta["scale_ratio"],
+        "area_polygon_count": area_meta["polygon_count"],
+        "resolved_area_count": area_meta["resolved_area_count"],
+        "unresolved_area_count": area_meta["unresolved_area_count"],
         "raw_words": raw_words,
         "reconstructed_blocks": reconstructed_blocks,
         "classified_items": classified_items,

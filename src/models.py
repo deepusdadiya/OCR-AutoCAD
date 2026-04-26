@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 
 @dataclass
@@ -21,6 +21,9 @@ class TextItem:
     font_size: float = 0.0
     dir_x: float = 1.0
     dir_y: float = 0.0
+    area_value: Optional[float] = None
+    area_method: str = ""
+    area_confidence: float = 0.0
 
     @property
     def cx(self) -> float:
