@@ -10,6 +10,13 @@ def open_pdf(pdf_path: str) -> fitz.Document:
     return fitz.open(pdf_path)
 
 
+def get_page_count(pdf_path: str) -> int:
+    doc = open_pdf(pdf_path)
+    page_count = doc.page_count
+    doc.close()
+    return page_count
+
+
 def get_page_size(pdf_path: str, page_number: int = 0) -> Tuple[float, float]:
     doc = open_pdf(pdf_path)
     page = doc[page_number]

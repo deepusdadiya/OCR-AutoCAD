@@ -27,6 +27,7 @@ def build_final_client_instances_df(label_candidates: List[TextItem]) -> pd.Data
             {
                 "base_name": _norm(item.text),
                 "score": round(item.score, 2),
+                "page_number": item.page_number,
                 "cx": round(item.cx, 2),
                 "cy": round(item.cy, 2),
                 "label_category": item.label_category,
@@ -38,7 +39,7 @@ def build_final_client_instances_df(label_candidates: List[TextItem]) -> pd.Data
         return pd.DataFrame(columns=["Name", "Area (sqmm)"])
 
     df = df[df["base_name"].str.len() > 0].copy()
-    df = df.sort_values(by=["base_name", "cy", "cx"]).reset_index(drop=True)
+    df = df.sort_values(by=["base_name", "page_number", "cy", "cx"]).reset_index(drop=True)
 
     final_names = []
     for base_name, group in df.groupby("base_name", sort=False):
@@ -65,6 +66,7 @@ def build_final_client_instances_debug_df(label_candidates: List[TextItem]) -> p
             {
                 "base_name": _norm(item.text),
                 "score": round(item.score, 2),
+                "page_number": item.page_number,
                 "cx": round(item.cx, 2),
                 "cy": round(item.cy, 2),
                 "label_category": item.label_category,
@@ -73,9 +75,9 @@ def build_final_client_instances_debug_df(label_candidates: List[TextItem]) -> p
 
     df = pd.DataFrame(rows)
     if df.empty:
-        return pd.DataFrame(columns=["Name", "Area (sqmm)", "label_category", "score", "cx", "cy"])
+        return pd.DataFrame(columns=["Name", "Area (sqmm)", "page_number", "label_category", "score", "cx", "cy"])
 
-    df = df.sort_values(by=["base_name", "cy", "cx"]).reset_index(drop=True)
+    df = df.sort_values(by=["base_name", "page_number", "cy", "cx"]).reset_index(drop=True)
 
     final_names = []
     for base_name, group in df.groupby("base_name", sort=False):
@@ -92,4 +94,4 @@ def build_final_client_instances_debug_df(label_candidates: List[TextItem]) -> p
     df["Name"] = df.index.map(name_map)
     df["Area (sqmm)"] = ""
 
-    return df[["Name", "Area (sqmm)", "label_category", "score", "cx", "cy"]].copy()
+    return df[["Name", "Area (sqmm)", "page_number", "label_category", "score", "cx", "cy"]].copy()

@@ -1,44 +1,44 @@
-Name,Area (sqmm),label_category,score,cx,cy
-A.H.U #1,,short_label,54.0,978.56,587.21
-A.H.U #2,,short_label,54.0,597.44,1236.89
-CHW,,short_label,58.0,588.48,1139.57
-CO-FA #1,,short_label,58.0,894.6,544.29
-CO-FA #2,,short_label,58.0,582.84,1175.01
-CO-RA #1,,short_label,58.0,856.92,544.29
-CO-RA #2,,short_label,58.0,547.32,1175.01
-ELEC,,short_label,58.0,547.32,1123.16
-ELV,,short_label,58.0,853.44,1280.84
-F LIFT,,label,62.0,695.6,916.02
-F LOBBY,,label,62.0,696.8,987.6
-F.TOILET,,qualified_label,62.0,1003.28,1262.86
-FHC #1,,short_label,56.0,949.92,803.48
-FHC #2,,short_label,58.0,588.48,1099.76
-H.TOILET,,qualified_label,62.0,956.36,1209.29
-LIFT B1,,qualified_label,62.0,881.24,1068.2
-LIFT B2,,qualified_label,62.0,881.12,1145.48
-LIFT B3,,qualified_label,62.0,881.12,1224.2
-LIFT B4,,qualified_label,62.0,696.92,1145.48
-LIFT B5,,qualified_label,62.0,696.92,1223.72
-LIFT FOR OBSERVATORY #1,,label,62.0,881.54,911.53
-LIFT FOR OBSERVATORY #2,,label,62.0,881.54,989.65
-LOBBY-1,,qualified_label,52.0,793.79,1069.66
-LOBBY-2,,qualified_label,52.0,656.63,630.22
-LOBBY-3,,qualified_label,62.0,630.08,1051.69
-LOBBY-4,,qualified_label,62.0,953.6,764.17
-LOBBY. PRESSURIZATION,,qualified_label,56.0,689.04,1278.56
-LOBBY. PRESSURIZATION SHAFT #1,,label,58.0,985.68,684.2
-LOBBY. PRESSURIZATION SHAFT #2,,label,56.0,687.0,1094.6
-M.TOILET,,qualified_label,62.0,953.24,1138.46
-OFFICE,,short_label,52.0,1188.11,950.54
-PANTRY,,short_label,62.0,1015.4,1084.62
-PASSAGE #1,,label,62.0,1028.12,682.83
-PASSAGE #2,,label,62.0,631.52,1135.35
-PLUMBING SHAFT,,label,58.0,932.64,1056.99
-RWS,,short_label,58.0,890.4,1281.33
-S LIFT - 1,,qualified_label,62.0,878.96,687.29
-S LIFT - 2,,qualified_label,62.0,947.12,686.45
-STAIRCASE-1,,qualified_label,62.0,577.76,987.3
-STAIRCASE-2,,qualified_label,62.0,990.8,842.58
-STR. PRESSURIZATION SHAFT #1,,label,56.0,582.71,791.96
-STR. PRESSURIZATION SHAFT #2,,label,56.0,1010.63,1043.0
-TOILET/PANTRY EXE,,qualified_label,58.0,963.84,1060.45
+Name,Area (sqmm),page_number,label_category,score,cx,cy
+A.H.U #1,,0,short_label,54.0,978.56,587.21
+A.H.U #2,,0,short_label,54.0,597.44,1236.89
+CHW,,0,short_label,58.0,588.48,1139.57
+CO-FA #1,,0,short_label,58.0,894.6,544.29
+CO-FA #2,,0,short_label,58.0,582.84,1175.01
+CO-RA #1,,0,short_label,58.0,856.92,544.29
+CO-RA #2,,0,short_label,58.0,547.32,1175.01
+ELEC,,0,short_label,58.0,547.32,1123.16
+ELV,,0,short_label,58.0,853.44,1280.84
+F LIFT,,0,label,62.0,695.6,916.02
+F LOBBY,,0,label,62.0,696.8,987.6
+F.TOILET,,0,qualified_label,62.0,1003.28,1262.86
+FHC #1,,0,short_label,56.0,949.92,803.48
+FHC #2,,0,short_label,58.0,588.48,1099.76
+H.TOILET,,0,qualified_label,62.0,956.36,1209.29
+LIFT B1,,0,qualified_label,62.0,881.24,1068.2
+LIFT B2,,0,qualified_label,62.0,881.12,1145.48
+LIFT B3,,0,qualified_label,62.0,881.12,1224.2
+LIFT B4,,0,qualified_label,62.0,696.92,1145.48
+LIFT B5,,0,qualified_label,62.0,696.92,1223.72
+LIFT FOR OBSERVATORY #1,,0,label,62.0,881.54,911.53
+LIFT FOR OBSERVATORY #2,,0,label,62.0,881.54,989.65
+LOBBY-1,,0,qualified_label,52.0,793.79,1069.66
+LOBBY-2,,0,qualified_label,52.0,656.63,630.22
+LOBBY-3,,0,qualified_label,62.0,630.08,1051.69
+LOBBY-4,,0,qualified_label,62.0,953.6,764.17
+LOBBY. PRESSURIZATION,,0,qualified_label,56.0,689.04,1278.56
+LOBBY. PRESSURIZATION SHAFT #1,,0,label,58.0,985.68,684.2
+LOBBY. PRESSURIZATION SHAFT #2,,0,label,56.0,687.0,1094.6
+M.TOILET,,0,qualified_label,62.0,953.24,1138.46
+OFFICE,,0,short_label,52.0,1188.11,950.54
+PANTRY,,0,short_label,62.0,1015.4,1084.62
+PASSAGE #1,,0,label,62.0,1028.12,682.83
+PASSAGE #2,,0,label,62.0,631.52,1135.35
+PLUMBING SHAFT,,0,label,58.0,932.64,1056.99
+RWS,,0,short_label,58.0,890.4,1281.33
+S LIFT - 1,,0,qualified_label,62.0,878.96,687.29
+S LIFT - 2,,0,qualified_label,62.0,947.12,686.45
+STAIRCASE-1,,0,qualified_label,62.0,577.76,987.3
+STAIRCASE-2,,0,qualified_label,62.0,990.8,842.58
+STR. PRESSURIZATION SHAFT #1,,0,label,56.0,582.71,791.96
+STR. PRESSURIZATION SHAFT #2,,0,label,56.0,1010.63,1043.0
+TOILET/PANTRY EXE,,0,qualified_label,58.0,963.84,1060.45

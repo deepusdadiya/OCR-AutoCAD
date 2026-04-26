@@ -1,0 +1,2 @@
+case_id,pdf_path,expected_csv_path,min_match_rate
+dg_shipping_36f,data/input/36th FLOOR - DG SHIPPING ARCH LAYOUT-Model.pdf,data/expected/Room_areas - Sheet1 (1).csv,0.95

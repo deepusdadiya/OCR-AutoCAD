@@ -5,6 +5,8 @@ from src.pipeline import run_pipeline
 def main():
     result = run_pipeline(str(INPUT_PDF), None)
 
+    page_count = result["page_count"]
+    extraction_modes = [page["text_extraction_mode"] for page in result["page_results"]]
     text_df = result["text_df"]
     final_client_df = result["final_client_df"]
     final_client_debug_df = result["final_client_debug_df"]
@@ -17,6 +19,8 @@ def main():
     final_client_df.to_csv(final_client_path, index=False)
     final_client_debug_df.to_csv(final_client_debug_path, index=False)
 
+    print(f"Processed pages: {page_count}")
+    print(f"Extraction modes: {', '.join(extraction_modes)}")
     print(f"Saved: {text_path}")
     print(f"Saved: {final_client_path}")
     print(f"Saved: {final_client_debug_path}")
