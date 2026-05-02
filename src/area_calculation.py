@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from math import exp
 from typing import Any, Dict, List, Tuple
 
 import fitz
@@ -13,9 +14,16 @@ from config import (
     OPEN_FRAGMENT_MAX_AREA_SQM,
     OPEN_FRAGMENT_NEARBY_DISTANCE_PDF,
     OPEN_FRAGMENT_MIN_ASSIGN_AREA_SQM,
+    SPARSE_FRAGMENT_ASSIGN_RADIUS_PDF,
+    SPARSE_FRAGMENT_MIN_AREA_SQM,
     OPEN_RESIDUAL_MIN_AREA_SQM,
     OPEN_RESIDUAL_MIN_DISTANCE_PDF,
     OPEN_RESIDUAL_DOMINANCE_RATIO,
+    RESIDUAL_PARTITION_GRID_STEP_PDF,
+    RESIDUAL_PARTITION_LOCAL_SHARE_POWER,
+    RESIDUAL_PARTITION_FONT_POWER,
+    RESIDUAL_PARTITION_FRAGMENT_SCALE_PDF,
+    RESIDUAL_PARTITION_MAX_DISTANCE_PDF,
     NETWORKED_CLOSED_GAP_MIN_NEIGHBORS,
     NETWORKED_CLOSED_GAP_AREA_RATIO,
     TINY_FRAGMENT_MAX_AREA_SQM,
@@ -212,6 +220,24 @@ def _polygon_fill_ratio(polygon: Polygon) -> float:
     return polygon.area / bbox_area
 
 
+def _build_fragment_indices(polygon_areas_sqm: List[float]) -> List[int]:
+    return [
+        index
+        for index, area_sqm in enumerate(polygon_areas_sqm)
+        if 0.05 <= area_sqm <= OPEN_FRAGMENT_MAX_AREA_SQM
+    ]
+
+
+def _nearest_fragment_distance(
+    point: Point,
+    polygons: List[Polygon],
+    fragment_indices: List[int],
+) -> float:
+    if not fragment_indices:
+        return float("inf")
+    return min(point.distance(polygons[index]) for index in fragment_indices)
+
+
 def _find_fragment_candidate_indices(
     polygons: List[Polygon],
     polygon_areas_sqm: List[float],
@@ -229,6 +255,71 @@ def _find_fragment_candidate_indices(
         candidate_indices.append(index)
 
     return candidate_indices
+
+
+def _assign_sparse_isolated_fragment_areas(
+    unresolved_items: List[TextItem],
+    all_items: List[TextItem],
+    polygons: List[Polygon],
+    polygon_areas_sqm: List[float],
+) -> None:
+    if not unresolved_items:
+        return
+
+    unresolved_by_parent: Dict[int, List[TextItem]] = defaultdict(list)
+    for item in unresolved_items:
+        point = Point(item.cx, item.cy)
+        parent_index = _find_parent_polygon_index(point, polygons, polygon_areas_sqm)
+        if parent_index is None:
+            continue
+        unresolved_by_parent[parent_index].append(item)
+
+    tiny_fragment_indices = [
+        index
+        for index, area_sqm in enumerate(polygon_areas_sqm)
+        if 0.05 <= area_sqm <= TINY_FRAGMENT_MAX_AREA_SQM
+    ]
+    if not tiny_fragment_indices:
+        return
+
+    item_points = {id(item): Point(item.cx, item.cy) for item in all_items}
+
+    for item in unresolved_items:
+        if item.area_value is not None:
+            continue
+
+        point = item_points[id(item)]
+        parent_index = _find_parent_polygon_index(point, polygons, polygon_areas_sqm)
+        if parent_index is None or len(unresolved_by_parent.get(parent_index, [])) != 1:
+            continue
+
+        nearby_regular = any(point.distance(polygons[index]) <= OPEN_FRAGMENT_NEARBY_DISTANCE_PDF for index in tiny_fragment_indices)
+        if nearby_regular:
+            continue
+
+        total_area_sqm = 0.0
+        for index in tiny_fragment_indices:
+            polygon = polygons[index]
+            distance = point.distance(polygon)
+            if distance > SPARSE_FRAGMENT_ASSIGN_RADIUS_PDF:
+                continue
+
+            competitions = sorted(
+                [
+                    (other_point.distance(polygon), other_item)
+                    for other_item in all_items
+                    for other_point in [item_points[id(other_item)]]
+                    if other_point.distance(polygon) <= SPARSE_FRAGMENT_ASSIGN_RADIUS_PDF
+                ],
+                key=lambda pair: pair[0],
+            )
+            if not competitions or id(competitions[0][1]) != id(item):
+                continue
+
+            total_area_sqm += polygon_areas_sqm[index]
+
+        if total_area_sqm >= SPARSE_FRAGMENT_MIN_AREA_SQM:
+            _assign_exact_area(item, total_area_sqm, "vector_sparse_fragment_fallback", 0.24)
 
 
 def _reopen_networked_closed_gap_labels(
@@ -463,11 +554,7 @@ def _assign_residual_open_area(
     parent_groups: Dict[int, List[TextItem]] = defaultdict(list)
     nearest_fragment_distance: Dict[int, float] = {}
 
-    fragment_indices = [
-        index
-        for index, area_sqm in enumerate(enhanced_polygon_areas_sqm)
-        if 0.05 <= area_sqm <= OPEN_FRAGMENT_MAX_AREA_SQM
-    ]
+    fragment_indices = _build_fragment_indices(enhanced_polygon_areas_sqm)
 
     for item in unresolved_items:
         if item.area_value is not None:
@@ -478,13 +565,9 @@ def _assign_residual_open_area(
             continue
         parent_groups[parent_index].append(item)
 
-        distances = [point.distance(enhanced_polygons[index]) for index in fragment_indices]
-        nearest_fragment_distance[id(item)] = min(distances) if distances else float("inf")
+        nearest_fragment_distance[id(item)] = _nearest_fragment_distance(point, enhanced_polygons, fragment_indices)
 
     for parent_index, group_items in parent_groups.items():
-        if len(group_items) < 2:
-            continue
-
         parent_area_sqm = enhanced_polygon_areas_sqm[parent_index]
         parent_polygon = enhanced_polygons[parent_index]
         already_claimed_sqm = 0.0
@@ -497,14 +580,29 @@ def _assign_residual_open_area(
         if residual_area_sqm < OPEN_RESIDUAL_MIN_AREA_SQM:
             continue
 
+        if len(group_items) >= 2:
+            weights = _estimate_residual_partition_weights(
+                parent_polygon=parent_polygon,
+                group_items=group_items,
+                nearest_fragment_distance=nearest_fragment_distance,
+            )
+            if not weights:
+                continue
+
+            for item in group_items:
+                share = max(weights.get(id(item), 0.0), 0.0)
+                if share <= 0:
+                    continue
+                item.area_value = round(residual_area_sqm * share, 2)
+                item.area_method = "vector_open_residual_partition"
+                item.area_confidence = 0.24
+            continue
+
         ranked_items = sorted(
             group_items,
             key=lambda item: nearest_fragment_distance.get(id(item), 0.0),
             reverse=True,
         )
-        if not ranked_items:
-            continue
-
         top_distance = nearest_fragment_distance.get(id(ranked_items[0]), 0.0)
         next_distance = nearest_fragment_distance.get(id(ranked_items[1]), 0.0) if len(ranked_items) > 1 else 0.0
         if top_distance < OPEN_RESIDUAL_MIN_DISTANCE_PDF:
@@ -516,6 +614,55 @@ def _assign_residual_open_area(
         winner.area_value = round((winner.area_value or 0.0) + residual_area_sqm, 2)
         winner.area_method = "vector_open_residual"
         winner.area_confidence = 0.33
+
+
+def _estimate_residual_partition_weights(
+    parent_polygon: Polygon,
+    group_items: List[TextItem],
+    nearest_fragment_distance: Dict[int, float],
+) -> Dict[int, float]:
+    if not group_items:
+        return {}
+
+    item_points = {id(item): Point(item.cx, item.cy) for item in group_items}
+    counts: Dict[int, int] = defaultdict(int)
+    total_samples = 0
+
+    min_x, min_y, max_x, max_y = parent_polygon.bounds
+    step = max(RESIDUAL_PARTITION_GRID_STEP_PDF, 1.0)
+
+    y = min_y
+    while y <= max_y:
+        x = min_x
+        while x <= max_x:
+            sample_point = Point(x, y)
+            if parent_polygon.buffer(0.1).contains(sample_point):
+                winner = min(group_items, key=lambda item: sample_point.distance(item_points[id(item)]))
+                counts[id(winner)] += 1
+                total_samples += 1
+            x += step
+        y += step
+
+    if total_samples == 0:
+        return {id(item): 1.0 / len(group_items) for item in group_items}
+
+    scores: Dict[int, float] = {}
+    for item in group_items:
+        local_share = counts.get(id(item), 0) / total_samples
+        local_term = max(local_share, 1e-6) ** RESIDUAL_PARTITION_LOCAL_SHARE_POWER
+        font_term = max(item.font_size, 1.0) ** RESIDUAL_PARTITION_FONT_POWER
+        fragment_distance = min(
+            nearest_fragment_distance.get(id(item), 0.0),
+            RESIDUAL_PARTITION_MAX_DISTANCE_PDF,
+        )
+        fragment_term = exp(fragment_distance / RESIDUAL_PARTITION_FRAGMENT_SCALE_PDF)
+        scores[id(item)] = local_term * font_term * fragment_term
+
+    total_score = sum(scores.values())
+    if total_score <= 0:
+        return {id(item): 1.0 / len(group_items) for item in group_items}
+
+    return {item_id: score / total_score for item_id, score in scores.items()}
 
 
 def estimate_page_label_areas(
@@ -584,6 +731,15 @@ def estimate_page_label_areas(
         _assign_fragment_partition_areas(
             unresolved_items,
             resolved_items,
+            enhanced_polygons,
+            enhanced_polygon_areas_sqm,
+        )
+
+    unresolved_items = [item for item in label_candidates if item.area_value is None]
+    if unresolved_items and enhanced_polygons:
+        _assign_sparse_isolated_fragment_areas(
+            unresolved_items,
+            label_candidates,
             enhanced_polygons,
             enhanced_polygon_areas_sqm,
         )

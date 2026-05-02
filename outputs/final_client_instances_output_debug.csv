@@ -1,5 +1,5 @@
 Name,Area (sqmm),page_number,label_category,score,area_method,area_confidence,cx,cy
-A.H.U #1,,0,short_label,54.0,unresolved,0.0,978.56,587.21
+A.H.U #1,24.85,0,short_label,54.0,vector_open_residual_partition,0.24,978.56,587.21
 A.H.U #2,12.79,0,short_label,54.0,vector_shared_fragment_fallback,0.28,597.44,1236.89
 CHW,1.36,0,short_label,58.0,vector_polygon_exact,0.95,588.48,1139.57
 CO-FA #1,1.18,0,short_label,58.0,vector_polygon_exact,0.95,894.6,544.29
@@ -21,15 +21,15 @@ LIFT B4,6.04,0,qualified_label,62.0,vector_polygon_exact,0.95,696.92,1145.48
 LIFT B5,6.03,0,qualified_label,62.0,vector_polygon_exact,0.95,696.92,1223.72
 LIFT FOR OBSERVATORY #1,6.03,0,label,62.0,vector_polygon_exact,0.95,881.54,911.53
 LIFT FOR OBSERVATORY #2,6.03,0,label,62.0,vector_polygon_exact,0.95,881.54,989.65
-LOBBY-1,,0,qualified_label,52.0,unresolved,0.0,793.79,1069.66
-LOBBY-2,,0,qualified_label,52.0,unresolved,0.0,656.63,630.22
+LOBBY-1,59.5,0,qualified_label,52.0,vector_open_residual_partition,0.24,793.79,1069.66
+LOBBY-2,1.24,0,qualified_label,52.0,vector_sparse_fragment_fallback,0.24,656.63,630.22
 LOBBY-3,16.16,0,qualified_label,62.0,vector_shared_fragment_fallback,0.28,630.08,1051.69
 LOBBY-4,6.78,0,qualified_label,62.0,vector_open_fragment_partition,0.42,953.6,764.17
 LOBBY. PRESSURIZATION,2.5,0,qualified_label,56.0,vector_polygon_exact,0.95,689.04,1278.56
 LOBBY. PRESSURIZATION SHAFT #1,1.78,0,label,58.0,vector_polygon_exact,0.95,985.68,684.2
 LOBBY. PRESSURIZATION SHAFT #2,1.6,0,label,56.0,vector_polygon_exact,0.95,687.0,1094.6
 M.TOILET,8.39,0,qualified_label,62.0,vector_open_fragment_partition,0.42,953.24,1138.46
-OFFICE,1285.19,0,short_label,52.0,vector_open_residual,0.33,1188.11,950.54
+OFFICE,1200.84,0,short_label,52.0,vector_open_residual_partition,0.24,1188.11,950.54
 PANTRY,3.5,0,short_label,62.0,vector_polygon_closed_gap,0.72,1015.4,1084.62
 PASSAGE #1,8.84,0,label,62.0,vector_open_fragment_partition,0.42,1028.12,682.83
 PASSAGE #2,6.18,0,label,62.0,vector_open_fragment_partition,0.42,631.52,1135.35

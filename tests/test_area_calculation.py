@@ -34,8 +34,17 @@ class AreaCalculationTests(unittest.TestCase):
         self.assertLess(float(debug_df.loc["PANTRY", "Area (sqmm)"]), 5.0)
         self.assertEqual(debug_df.loc["STAIRCASE-1", "area_method"], "vector_fragment_cluster")
         self.assertGreater(float(debug_df.loc["STAIRCASE-1", "Area (sqmm)"]), 25.0)
-        self.assertEqual(debug_df.loc["OFFICE", "area_method"], "vector_open_residual")
+        self.assertIn(debug_df.loc["OFFICE", "area_method"], {"vector_open_residual", "vector_open_residual_partition"})
         self.assertGreater(float(debug_df.loc["OFFICE", "Area (sqmm)"]), 1200.0)
+
+    def test_no_sample_labels_remain_unresolved(self) -> None:
+        result = run_pipeline(str(INPUT_PDF), None)
+        debug_df = result["final_client_debug_df"].set_index("Name")
+
+        for name in ["A.H.U #1", "LOBBY-1", "LOBBY-2"]:
+            with self.subTest(name=name):
+                self.assertNotEqual(str(debug_df.loc[name, "Area (sqmm)"]).strip(), "")
+                self.assertNotEqual(debug_df.loc[name, "area_method"], "unresolved")
 
 
 if __name__ == "__main__":
