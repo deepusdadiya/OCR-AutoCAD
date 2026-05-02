@@ -2,6 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# Default sample inputs used when runtime paths are not provided.
 INPUT_PDF = BASE_DIR / "data" / "input" / "36th FLOOR - DG SHIPPING ARCH LAYOUT-Model.pdf"
 EXPECTED_CSV = BASE_DIR / "data" / "expected" / "Room_areas - Sheet1 (1).csv"
 OUTPUT_DIR = BASE_DIR / "outputs"
