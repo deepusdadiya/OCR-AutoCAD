@@ -8,7 +8,10 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from config import INPUT_PDF  # noqa: E402
-from src.area_calculation import extract_page_scale_ratio  # noqa: E402
+from shapely.geometry import Polygon  # noqa: E402
+
+from src.area_calculation import _area_pdf_to_sqm, _extract_scale_ratio, _infer_scale_ratio_from_embedded_areas, extract_page_scale_ratio  # noqa: E402
+from src.models import TextItem  # noqa: E402
 from src.pipeline import run_pipeline  # noqa: E402
 
 
@@ -16,6 +19,30 @@ class AreaCalculationTests(unittest.TestCase):
     def test_extracts_scale_ratio_from_sample_pdf(self) -> None:
         scale_ratio = extract_page_scale_ratio(str(INPUT_PDF), page_number=0)
         self.assertEqual(scale_ratio, 100.0)
+
+    def test_scale_parser_ignores_non_scale_ratios(self) -> None:
+        self.assertIsNone(_extract_scale_ratio("RAMP SLOPE 1:12"))
+        self.assertIsNone(_extract_scale_ratio("03/79"))
+        self.assertIsNone(_extract_scale_ratio("REF.PIPE-1.3 TR 12.7/9.5"))
+
+    def test_scale_parser_supports_architectural_format(self) -> None:
+        self.assertEqual(_extract_scale_ratio('SCALE: 1/8" = 1\'-0"'), 96.0)
+
+    def test_infers_scale_ratio_from_embedded_area(self) -> None:
+        polygon = Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])
+        expected_area_sqm = _area_pdf_to_sqm(polygon.area, 100.0)
+        item = TextItem(
+            text="ROOM",
+            x0=2,
+            y0=2,
+            x1=8,
+            y1=8,
+            embedded_area_value=expected_area_sqm,
+        )
+
+        inferred_ratio = _infer_scale_ratio_from_embedded_areas([item], [polygon])
+        self.assertIsNotNone(inferred_ratio)
+        self.assertAlmostEqual(float(inferred_ratio), 100.0, places=3)
 
     def test_resolves_exact_closed_room_areas(self) -> None:
         result = run_pipeline(str(INPUT_PDF), None)

@@ -101,18 +101,18 @@ else:
                 f"Vector alpha items: {page_result['vector_alpha_count']}. "
                 f"OCR alpha items: {page_result['ocr_alpha_count']}."
             )
-        st.image(page_result["full_image"], caption="Rendered page", use_container_width=True)
-        st.image(page_result["page_region_debug"], caption="Detected drawing/metadata regions", use_container_width=True)
+        st.image(page_result["full_image"], caption="Rendered page", width="stretch")
+        st.image(page_result["page_region_debug"], caption="Detected drawing/metadata regions", width="stretch")
 
     with tab2:
-        st.dataframe(page_text_df, use_container_width=True)
+        st.dataframe(page_text_df, width="stretch")
 
     with tab3:
-        st.dataframe(page_final_labels_df, use_container_width=True)
+        st.dataframe(page_final_labels_df, width="stretch")
 
     with tab4:
         if result["comparison_df"] is not None:
-            st.dataframe(result["comparison_df"], use_container_width=True)
+            st.dataframe(result["comparison_df"], width="stretch")
             matched = int(result["comparison_df"]["matched"].sum())
             total = len(result["comparison_df"])
             st.metric("Matched expected names", f"{matched}/{total}")

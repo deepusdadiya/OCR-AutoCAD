@@ -57,7 +57,7 @@ def build_final_client_instances_df(label_candidates: List[TextItem]) -> pd.Data
 
     name_map = dict(final_names)
     df["Name"] = df.index.map(name_map)
-    df["Area (sqmm)"] = df["area_value"].where(df["area_value"].notna(), "")
+    df["Area (sqmm)"] = pd.to_numeric(df["area_value"], errors="coerce")
 
     return df[["Name", "Area (sqmm)"]].copy()
 
@@ -110,7 +110,7 @@ def build_final_client_instances_debug_df(label_candidates: List[TextItem]) -> p
 
     name_map = dict(final_names)
     df["Name"] = df.index.map(name_map)
-    df["Area (sqmm)"] = df["area_value"].where(df["area_value"].notna(), "")
+    df["Area (sqmm)"] = pd.to_numeric(df["area_value"], errors="coerce")
 
     return df[
         ["Name", "Area (sqmm)", "page_number", "label_category", "score", "area_method", "area_confidence", "cx", "cy"]

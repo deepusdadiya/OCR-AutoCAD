@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from config import (
+    MIN_CLIENT_OUTPUT_AREA_SQM,
     RENDER_DPI,
     MIN_DRAWING_COMPONENT_AREA,
     DRAWING_REGION_PADDING,
@@ -13,7 +14,13 @@ from src.label_fusion import fuse_label_candidates
 from src.text_extraction import extract_text_payload
 from src.page_analysis import detect_page_regions, draw_page_regions
 from src.text_block_reconstruction import reconstruct_text_blocks, deduplicate_blocks
-from src.text_classifier import assign_region_type, classify_text_items, keep_room_label_candidates
+from src.text_classifier import (
+    attach_nearby_area_annotations,
+    assign_region_type,
+    classify_text_items,
+    keep_room_label_candidates,
+    prune_final_label_candidates,
+)
 from src.output_builder import build_text_candidates_df
 from src.instance_export import (
     build_final_client_instances_df,
@@ -49,7 +56,12 @@ def _run_page_pipeline(pdf_path: str, page_number: int) -> Dict[str, Any]:
     classified_items = classify_text_items(reconstructed_blocks)
     label_candidates = keep_room_label_candidates(classified_items)
     fused_label_candidates = fuse_label_candidates(label_candidates)
+    attach_nearby_area_annotations(fused_label_candidates, classified_items)
     area_meta = estimate_page_label_areas(pdf_path, page_number, fused_label_candidates)
+    fused_label_candidates = prune_final_label_candidates(
+        fused_label_candidates,
+        min_area_sqm=MIN_CLIENT_OUTPUT_AREA_SQM,
+    )
 
     return {
         "page_number": page_number,

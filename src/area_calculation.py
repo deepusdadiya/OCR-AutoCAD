@@ -1,6 +1,8 @@
 import re
 from collections import defaultdict
-from math import exp
+from fractions import Fraction
+from math import exp, sqrt
+from statistics import median
 from typing import Any, Dict, List, Tuple
 
 import fitz
@@ -8,6 +10,8 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import polygonize, unary_union
 
 from config import (
+    OCR_CONFIDENCE_THRESHOLD,
+    OCR_RENDER_DPI,
     MIN_VECTOR_POLYGON_AREA_PDF,
     MAX_EXACT_VECTOR_AREA_SQM,
     SECOND_PASS_DIRECT_MAX_AREA_SQM,
@@ -39,25 +43,82 @@ from config import (
     SHARED_FRAGMENT_FALLBACK_MAX_EXISTING_AREA_SQM,
 )
 from src.models import TextItem
+from src.ocr_fallback import extract_ocr_lines, ocr_backend_available
+from src.pdf_io import extract_pdf_lines, get_page_size, render_pdf_page
+from src.text_utils import normalize_text
 
 
 SCALE_PATTERNS = [
-    re.compile(r"\b(\d+(?:\.\d+)?)\s*[:/]\s*(\d+(?:\.\d+)?)\b"),
-    re.compile(r"\bSCALE\s+(\d+(?:\.\d+)?)\s*[:/]\s*(\d+(?:\.\d+)?)\b"),
+    re.compile(r"\bSCALE\b[^0-9]*(1(?:\.0+)?)\s*[:/]\s*(\d+(?:\.\d+)?)\b"),
+    re.compile(r"^(1(?:\.0+)?)\s*[:/]\s*(\d+(?:\.\d+)?)$"),
 ]
+ARCHITECTURAL_SCALE_PATTERN = re.compile(
+    r"(?P<draw>\d+(?:/\d+)?)\s*\"\s*=\s*(?P<feet>\d+)\s*'\s*(?:[- ]\s*(?P<inches>\d+)\s*\")?"
+)
+SCALE_KEYWORD_PATTERN = re.compile(r"\bSCALE\b")
+
+
+def _ratio_from_numeric_scale(left: float, right: float) -> float | None:
+    if left <= 0 or right <= 0:
+        return None
+    ratio = right / left
+    if 5 <= ratio <= 5000:
+        return ratio
+    return None
+
+
+def _extract_architectural_scale_ratio(text: str) -> float | None:
+    upper_text = text.upper()
+    match = ARCHITECTURAL_SCALE_PATTERN.search(upper_text)
+    if not match:
+        return None
+
+    draw_inches = float(Fraction(match.group("draw")))
+    feet = int(match.group("feet"))
+    inches = int(match.group("inches") or 0)
+    real_inches = (feet * 12) + inches
+    return _ratio_from_numeric_scale(draw_inches, float(real_inches))
 
 
 def _extract_scale_ratio(text: str) -> float | None:
-    upper_text = text.upper()
-    for pattern in SCALE_PATTERNS:
-        for match in pattern.finditer(upper_text):
-            left = float(match.group(1))
-            right = float(match.group(2))
-            if left <= 0 or right <= 0:
-                continue
-            ratio = right / left
-            if 5 <= ratio <= 5000:
+    lines = [line for line in text.splitlines() if line.strip()]
+    return _extract_scale_ratio_from_lines(lines)
+
+
+def _extract_scale_ratio_from_lines(lines: List[str]) -> float | None:
+    normalized_lines = [normalize_text(line) for line in lines if normalize_text(line)]
+
+    for index, line in enumerate(normalized_lines):
+        if not SCALE_KEYWORD_PATTERN.search(line):
+            continue
+
+        context_lines = normalized_lines[max(0, index - 1): min(len(normalized_lines), index + 2)]
+        for context_line in context_lines:
+            ratio = _extract_architectural_scale_ratio(context_line)
+            if ratio is not None:
                 return ratio
+
+            for pattern in SCALE_PATTERNS:
+                match = pattern.search(context_line)
+                if match is None:
+                    continue
+                ratio = _ratio_from_numeric_scale(float(match.group(1)), float(match.group(2)))
+                if ratio is not None:
+                    return ratio
+
+    for line in normalized_lines:
+        ratio = _extract_architectural_scale_ratio(line)
+        if ratio is not None:
+            return ratio
+
+        for pattern in SCALE_PATTERNS:
+            match = pattern.fullmatch(line)
+            if match is None:
+                continue
+            ratio = _ratio_from_numeric_scale(float(match.group(1)), float(match.group(2)))
+            if ratio is not None:
+                return ratio
+
     return None
 
 
@@ -66,7 +127,29 @@ def extract_page_scale_ratio(pdf_path: str, page_number: int) -> float | None:
     page = doc[page_number]
     text = page.get_text("text")
     doc.close()
-    return _extract_scale_ratio(text)
+
+    ratio = _extract_scale_ratio(text)
+    if ratio is not None:
+        return ratio
+
+    pdf_lines = extract_pdf_lines(pdf_path, page_number=page_number)
+    ratio = _extract_scale_ratio_from_lines([item.text for item in pdf_lines])
+    if ratio is not None:
+        return ratio
+
+    if not ocr_backend_available():
+        return None
+
+    page_w, page_h = get_page_size(pdf_path, page_number=page_number)
+    image = render_pdf_page(pdf_path, page_number=page_number, dpi=OCR_RENDER_DPI)
+    ocr_items, _ = extract_ocr_lines(
+        image=image,
+        page_w=page_w,
+        page_h=page_h,
+        page_number=page_number,
+        confidence_threshold=OCR_CONFIDENCE_THRESHOLD,
+    )
+    return _extract_scale_ratio_from_lines([item.text for item in ocr_items])
 
 
 def _quad_segments(quad: Any) -> List[LineString]:
@@ -168,6 +251,41 @@ def build_page_vector_polygons(
 def _area_pdf_to_sqm(area_pdf: float, scale_ratio: float) -> float:
     mm_per_pdf_unit = (25.4 / 72.0) * scale_ratio
     return (area_pdf * (mm_per_pdf_unit**2)) / 1_000_000.0
+
+
+def _infer_scale_ratio_from_embedded_areas(
+    label_candidates: List[TextItem],
+    polygons: List[Polygon],
+) -> float | None:
+    inferred_ratios: List[float] = []
+    pdf_unit_to_mm = 25.4 / 72.0
+
+    for item in label_candidates:
+        if item.embedded_area_value is None or item.embedded_area_value <= 0:
+            continue
+
+        containing_indices = _find_containing_polygon_indices(Point(item.cx, item.cy), polygons)
+        if not containing_indices:
+            continue
+
+        area_pdf = polygons[containing_indices[0]].area
+        if area_pdf <= 0:
+            continue
+
+        mm_per_pdf_unit = sqrt((item.embedded_area_value * 1_000_000.0) / area_pdf)
+        ratio = mm_per_pdf_unit / pdf_unit_to_mm
+        if 5.0 <= ratio <= 5000.0:
+            inferred_ratios.append(ratio)
+
+    if not inferred_ratios:
+        return None
+
+    center_ratio = median(inferred_ratios)
+    clustered = [ratio for ratio in inferred_ratios if 0.75 <= (ratio / center_ratio) <= 1.25]
+    if clustered:
+        return float(median(clustered))
+
+    return float(center_ratio)
 
 
 def _find_containing_polygon_indices(point: Point, polygons: List[Polygon]) -> List[int]:
@@ -672,6 +790,8 @@ def estimate_page_label_areas(
 ) -> Dict[str, Any]:
     scale_ratio = extract_page_scale_ratio(pdf_path, page_number)
     polygons = build_page_vector_polygons(pdf_path, page_number)
+    if scale_ratio is None and polygons:
+        scale_ratio = _infer_scale_ratio_from_embedded_areas(label_candidates, polygons)
     polygon_areas_sqm = [_area_pdf_to_sqm(polygon.area, scale_ratio) for polygon in polygons] if scale_ratio else []
     enhanced_polygons = build_page_vector_polygons(pdf_path, page_number, close_door_arcs=True)
     enhanced_polygon_areas_sqm = (
@@ -683,10 +803,16 @@ def estimate_page_label_areas(
 
     if scale_ratio is None or not polygons:
         for item in label_candidates:
-            item.area_value = None
-            item.area_method = "unresolved"
-            item.area_confidence = 0.0
-            unresolved_count += 1
+            if item.embedded_area_value is not None:
+                item.area_value = round(item.embedded_area_value, 2)
+                item.area_method = "text_embedded_area"
+                item.area_confidence = 0.6
+                resolved_count += 1
+            else:
+                item.area_value = None
+                item.area_method = "unresolved"
+                item.area_confidence = 0.0
+                unresolved_count += 1
 
         return {
             "scale_ratio": scale_ratio,
@@ -700,18 +826,28 @@ def estimate_page_label_areas(
         containing_indices = _find_containing_polygon_indices(point, polygons)
 
         if not containing_indices:
-            item.area_value = None
-            item.area_method = "unresolved"
-            item.area_confidence = 0.0
+            if item.embedded_area_value is not None:
+                item.area_value = round(item.embedded_area_value, 2)
+                item.area_method = "text_embedded_area"
+                item.area_confidence = 0.6
+            else:
+                item.area_value = None
+                item.area_method = "unresolved"
+                item.area_confidence = 0.0
             continue
 
         area_sqm = polygon_areas_sqm[containing_indices[0]]
         if area_sqm <= MAX_EXACT_VECTOR_AREA_SQM:
             _assign_exact_area(item, area_sqm, "vector_polygon_exact", 0.95)
         else:
-            item.area_value = None
-            item.area_method = "unresolved"
-            item.area_confidence = 0.0
+            if item.embedded_area_value is not None:
+                item.area_value = round(item.embedded_area_value, 2)
+                item.area_method = "text_embedded_area"
+                item.area_confidence = 0.6
+            else:
+                item.area_value = None
+                item.area_method = "unresolved"
+                item.area_confidence = 0.0
 
     if enhanced_polygons and enhanced_polygon_areas_sqm:
         _assign_direct_second_pass_areas(
@@ -752,6 +888,12 @@ def estimate_page_label_areas(
             enhanced_polygons,
             enhanced_polygon_areas_sqm,
         )
+
+    for item in label_candidates:
+        if item.area_value is None and item.embedded_area_value is not None:
+            item.area_value = round(item.embedded_area_value, 2)
+            item.area_method = "text_embedded_area"
+            item.area_confidence = 0.6
 
     resolved_count = sum(1 for item in label_candidates if item.area_value is not None)
     unresolved_count = len(label_candidates) - resolved_count

@@ -113,6 +113,7 @@ def _merge_pair(parts: List[TextItem]) -> TextItem:
         font_size=max(item.font_size for item in ordered),
         dir_x=base.dir_x,
         dir_y=base.dir_y,
+        embedded_area_value=next((item.embedded_area_value for item in ordered if item.embedded_area_value is not None), None),
     )
 
 
