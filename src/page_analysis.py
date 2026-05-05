@@ -1,9 +1,18 @@
+from functools import lru_cache
 from typing import Tuple, List
-import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from src.models import PageRegions
+
+
+@lru_cache(maxsize=1)
+def _load_cv2():
+    try:
+        import cv2  # type: ignore
+    except Exception:
+        return None
+    return cv2
 
 
 def _merge_boxes(boxes: List[Tuple[int, int, int, int]], pad: int = 10) -> List[Tuple[int, int, int, int]]:
@@ -43,7 +52,13 @@ def detect_page_regions(
     - main drawing region
     - metadata/text blocks outside the main drawing region
     """
+    cv2 = _load_cv2()
     img = np.array(image)
+
+    if cv2 is None:
+        h, w = img.shape[:2]
+        return PageRegions(drawing_bbox_img=(0, 0, w, h), metadata_bboxes_img=[])
+
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
     # Dark content = white foreground
@@ -108,12 +123,12 @@ def crop_to_bbox(image: Image.Image, bbox: Tuple[int, int, int, int]) -> tuple[I
 
 
 def draw_page_regions(image: Image.Image, page_regions: PageRegions) -> Image.Image:
-    img = np.array(image).copy()
-
+    annotated = image.copy()
+    draw = ImageDraw.Draw(annotated)
     x, y, w, h = page_regions.drawing_bbox_img
-    cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 3)
+    draw.rectangle((x, y, x + w, y + h), outline=(0, 255, 0), width=3)
 
     for bx, by, bw, bh in page_regions.metadata_bboxes_img:
-        cv2.rectangle(img, (bx, by), (bx + bw, by + bh), (255, 0, 0), 2)
+        draw.rectangle((bx, by, bx + bw, by + bh), outline=(255, 0, 0), width=2)
 
-    return Image.fromarray(img)
+    return annotated
