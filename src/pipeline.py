@@ -83,6 +83,10 @@ def _run_page_pipeline(pdf_path: str, page_number: int) -> Dict[str, Any]:
 
     if not label_candidates and extraction_payload["ocr_available"] and extraction_payload["mode"] == "pdf_line":
         ocr_payload = extract_text_payload(pdf_path, page_number=page_number, force_ocr=True)
+        extraction_payload["ocr_available"] = ocr_payload["ocr_available"]
+        extraction_payload["ocr_attempted"] = ocr_payload["ocr_attempted"]
+        extraction_payload["ocr_alpha_count"] = ocr_payload["ocr_alpha_count"]
+        extraction_payload["ocr_rotation_hits"] = ocr_payload["ocr_rotation_hits"]
         ocr_raw_words = ocr_payload["items"]
         ocr_text_state = _classify_page_items(
             ocr_raw_words,

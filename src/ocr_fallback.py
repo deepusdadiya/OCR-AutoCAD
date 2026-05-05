@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import lru_cache
 from typing import Any, Dict, List, Tuple
 
 import cv2
@@ -23,8 +24,21 @@ def _load_pytesseract() -> Any | None:
     return pytesseract
 
 
+@lru_cache(maxsize=1)
+def _load_rapidocr() -> Any | None:
+    try:
+        from rapidocr_onnxruntime import RapidOCR  # type: ignore
+    except Exception:
+        return None
+
+    try:
+        return RapidOCR()
+    except Exception:
+        return None
+
+
 def ocr_backend_available() -> bool:
-    return _load_pytesseract() is not None
+    return _load_pytesseract() is not None or _load_rapidocr() is not None
 
 
 def _preprocess_image(image: Image.Image) -> np.ndarray:
@@ -106,20 +120,23 @@ def _dedupe_lines(items: List[TextItem]) -> List[TextItem]:
     return out
 
 
-def extract_ocr_lines(
-    image: Image.Image,
+def _orientation_from_bbox(pdf_bbox: Tuple[float, float, float, float]) -> Tuple[float, float, float]:
+    width = max(pdf_bbox[2] - pdf_bbox[0], 1.0)
+    height = max(pdf_bbox[3] - pdf_bbox[1], 1.0)
+    if height > (width * 1.2):
+        return 0.0, 1.0, width
+    return 1.0, 0.0, height
+
+
+def _extract_pytesseract_lines(
+    pytesseract: Any,
+    processed: np.ndarray,
     page_w: float,
     page_h: float,
     page_number: int,
-    confidence_threshold: int = 55,
+    confidence_threshold: int,
 ) -> Tuple[List[TextItem], Dict[str, Any]]:
-    pytesseract = _load_pytesseract()
-    if pytesseract is None:
-        return [], {"ocr_available": False, "ocr_attempted": False, "ocr_rotation_hits": {}}
-
-    processed = _preprocess_image(image)
     img_h, img_w = processed.shape[:2]
-
     collected: List[TextItem] = []
     rotation_hits: Dict[str, int] = {}
     output_dict = pytesseract.Output.DICT
@@ -197,9 +214,110 @@ def extract_ocr_lines(
                 )
             )
 
-    items = _dedupe_lines(collected)
-    return items, {
+    return _dedupe_lines(collected), {
         "ocr_available": True,
         "ocr_attempted": True,
         "ocr_rotation_hits": rotation_hits,
     }
+
+
+def _extract_rapidocr_lines(
+    rapidocr_engine: Any,
+    processed: np.ndarray,
+    page_w: float,
+    page_h: float,
+    page_number: int,
+    confidence_threshold: int,
+) -> Tuple[List[TextItem], Dict[str, Any]]:
+    img_h, img_w = processed.shape[:2]
+    collected: List[TextItem] = []
+    rotation_hits: Dict[str, int] = {}
+    normalized_threshold = confidence_threshold / 100.0
+
+    for rotation, variant in _rotation_variants(processed):
+        try:
+            result, _ = rapidocr_engine(variant)
+        except Exception:
+            result = None
+
+        rows = result or []
+        rotation_hits[rotation] = len(rows)
+
+        for line_idx, row in enumerate(rows):
+            if not isinstance(row, (list, tuple)) or len(row) < 3:
+                continue
+
+            box_points = row[0]
+            text = normalize_text(str(row[1]).strip())
+            try:
+                confidence = float(row[2])
+            except Exception:
+                confidence = 0.0
+
+            if not text or confidence < normalized_threshold or not has_alpha(text):
+                continue
+
+            xs = [float(point[0]) for point in box_points]
+            ys = [float(point[1]) for point in box_points]
+            x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+
+            img_bbox = _rotate_bbox_to_original(x0, y0, x1 - x0, y1 - y0, rotation, img_w, img_h)
+            pdf_bbox = _image_bbox_to_pdf_bbox(img_bbox, img_w, img_h, page_w, page_h)
+            dir_x, dir_y, font_size = _orientation_from_bbox(pdf_bbox)
+
+            collected.append(
+                TextItem(
+                    text=text,
+                    x0=float(pdf_bbox[0]),
+                    y0=float(pdf_bbox[1]),
+                    x1=float(pdf_bbox[2]),
+                    y1=float(pdf_bbox[3]),
+                    source="ocr_line",
+                    block_no=-1,
+                    line_no=line_idx,
+                    word_no=0,
+                    page_number=page_number,
+                    font_size=float(font_size),
+                    dir_x=dir_x,
+                    dir_y=dir_y,
+                )
+            )
+
+    return _dedupe_lines(collected), {
+        "ocr_available": True,
+        "ocr_attempted": True,
+        "ocr_rotation_hits": rotation_hits,
+    }
+
+
+def extract_ocr_lines(
+    image: Image.Image,
+    page_w: float,
+    page_h: float,
+    page_number: int,
+    confidence_threshold: int = 55,
+) -> Tuple[List[TextItem], Dict[str, Any]]:
+    pytesseract = _load_pytesseract()
+    processed = _preprocess_image(image)
+    if pytesseract is not None:
+        return _extract_pytesseract_lines(
+            pytesseract,
+            processed,
+            page_w,
+            page_h,
+            page_number,
+            confidence_threshold,
+        )
+
+    rapidocr_engine = _load_rapidocr()
+    if rapidocr_engine is not None:
+        return _extract_rapidocr_lines(
+            rapidocr_engine,
+            processed,
+            page_w,
+            page_h,
+            page_number,
+            confidence_threshold,
+        )
+
+    return [], {"ocr_available": False, "ocr_attempted": False, "ocr_rotation_hits": {}}
