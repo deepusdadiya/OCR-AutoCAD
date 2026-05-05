@@ -1,37 +1,64 @@
+from pathlib import Path
 from typing import Dict, Any
 
 from config import (
+    MIN_CLIENT_OUTPUT_AREA_SQM,
     RENDER_DPI,
     MIN_DRAWING_COMPONENT_AREA,
     DRAWING_REGION_PADDING,
-    WORD_Y_TOL,
-    WORD_X_GAP_TOL,
-    MIN_ROOM_AREA_PX,
-    MAX_ROOM_AREA_RATIO,
-    WALL_BINARY_THRESHOLD,
-    MORPH_CLOSE_KERNEL,
-    MORPH_CLOSE_ITER,
 )
-from src.pdf_io import get_page_size, render_pdf_page
-from src.text_extraction import extract_text_items
-from src.page_analysis import detect_page_regions, crop_to_bbox, draw_page_regions
-from src.text_grouping import group_words_into_phrases, deduplicate_phrases
-from src.text_classifier import assign_region_type, classify_text_items, keep_room_label_candidates
-from src.geometry_extraction import detect_room_candidates, draw_room_candidates
-from src.assignment import assign_labels_to_rooms
-from src.output_builder import (
-    build_text_candidates_df,
-    build_rooms_df,
-    build_label_room_matches_df,
-    build_final_output_df,
-    build_final_debug_df,
-)
+from src.area_calculation import estimate_page_label_areas
 from src.evaluate import compare_with_expected
+from src.pdf_io import get_page_count, get_page_size, render_pdf_page
+from src.label_fusion import fuse_label_candidates
+from src.text_extraction import extract_text_payload
+from src.page_analysis import detect_page_regions, draw_page_regions
+from src.text_block_reconstruction import reconstruct_text_blocks, deduplicate_blocks
+from src.text_classifier import (
+    attach_nearby_area_annotations,
+    assign_region_type,
+    classify_text_items,
+    keep_room_label_candidates,
+    prune_final_label_candidates,
+)
+from src.output_builder import build_text_candidates_df
+from src.instance_export import (
+    build_final_client_instances_df,
+    build_final_client_instances_debug_df,
+)
 
 
-def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[str, Any]:
-    page_w, page_h = get_page_size(pdf_path, page_number=0)
-    full_image = render_pdf_page(pdf_path, page_number=0, dpi=RENDER_DPI)
+def _classify_page_items(
+    raw_words,
+    page_regions,
+    page_w: float,
+    page_h: float,
+    img_w: int,
+    img_h: int,
+) -> Dict[str, Any]:
+    reconstructed_blocks = reconstruct_text_blocks(raw_words)
+    reconstructed_blocks = deduplicate_blocks(reconstructed_blocks)
+    reconstructed_blocks = assign_region_type(
+        reconstructed_blocks,
+        page_regions=page_regions,
+        page_w=page_w,
+        page_h=page_h,
+        img_w=img_w,
+        img_h=img_h,
+    )
+
+    classified_items = classify_text_items(reconstructed_blocks)
+    label_candidates = keep_room_label_candidates(classified_items)
+    return {
+        "reconstructed_blocks": reconstructed_blocks,
+        "classified_items": classified_items,
+        "label_candidates": label_candidates,
+    }
+
+
+def _run_page_pipeline(pdf_path: str, page_number: int) -> Dict[str, Any]:
+    page_w, page_h = get_page_size(pdf_path, page_number=page_number)
+    full_image = render_pdf_page(pdf_path, page_number=page_number, dpi=RENDER_DPI)
 
     page_regions = detect_page_regions(
         full_image,
@@ -40,77 +67,109 @@ def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[st
     )
     page_region_debug = draw_page_regions(full_image, page_regions)
 
-    drawing_crop, crop_offset = crop_to_bbox(full_image, page_regions.drawing_bbox_img)
-
-    raw_words = extract_text_items(pdf_path, page_number=0)
-    grouped_phrases = group_words_into_phrases(raw_words, y_tol=WORD_Y_TOL, x_gap_tol=WORD_X_GAP_TOL)
-    grouped_phrases = deduplicate_phrases(grouped_phrases)
-
-    grouped_phrases = assign_region_type(
-        grouped_phrases,
+    extraction_payload = extract_text_payload(pdf_path, page_number=page_number)
+    raw_words = extraction_payload["items"]
+    page_text_state = _classify_page_items(
+        raw_words,
         page_regions=page_regions,
         page_w=page_w,
         page_h=page_h,
         img_w=full_image.size[0],
         img_h=full_image.size[1],
     )
-    classified_items = classify_text_items(grouped_phrases)
-    label_candidates = keep_room_label_candidates(classified_items)
+    reconstructed_blocks = page_text_state["reconstructed_blocks"]
+    classified_items = page_text_state["classified_items"]
+    label_candidates = page_text_state["label_candidates"]
 
-    room_candidates = detect_room_candidates(
-        drawing_crop,
-        min_room_area_px=MIN_ROOM_AREA_PX,
-        max_room_area_ratio=MAX_ROOM_AREA_RATIO,
-        wall_binary_threshold=WALL_BINARY_THRESHOLD,
-        morph_close_kernel=MORPH_CLOSE_KERNEL,
-        morph_close_iter=MORPH_CLOSE_ITER,
+    if not label_candidates and extraction_payload["ocr_available"] and extraction_payload["mode"] == "pdf_line":
+        ocr_payload = extract_text_payload(pdf_path, page_number=page_number, force_ocr=True)
+        extraction_payload["ocr_available"] = ocr_payload["ocr_available"]
+        extraction_payload["ocr_attempted"] = ocr_payload["ocr_attempted"]
+        extraction_payload["ocr_alpha_count"] = ocr_payload["ocr_alpha_count"]
+        extraction_payload["ocr_rotation_hits"] = ocr_payload["ocr_rotation_hits"]
+        ocr_raw_words = ocr_payload["items"]
+        ocr_text_state = _classify_page_items(
+            ocr_raw_words,
+            page_regions=page_regions,
+            page_w=page_w,
+            page_h=page_h,
+            img_w=full_image.size[0],
+            img_h=full_image.size[1],
+        )
+        if len(ocr_text_state["label_candidates"]) > len(label_candidates):
+            extraction_payload = ocr_payload
+            raw_words = ocr_raw_words
+            reconstructed_blocks = ocr_text_state["reconstructed_blocks"]
+            classified_items = ocr_text_state["classified_items"]
+            label_candidates = ocr_text_state["label_candidates"]
+
+    fused_label_candidates = fuse_label_candidates(label_candidates)
+    attach_nearby_area_annotations(fused_label_candidates, classified_items)
+    area_meta = estimate_page_label_areas(pdf_path, page_number, fused_label_candidates)
+    fused_label_candidates = prune_final_label_candidates(
+        fused_label_candidates,
+        min_area_sqm=MIN_CLIENT_OUTPUT_AREA_SQM,
     )
-
-    assigned_rooms = assign_labels_to_rooms(
-        rooms=room_candidates,
-        text_items=label_candidates,
-        page_w=page_w,
-        page_h=page_h,
-        img_w=full_image.size[0],
-        img_h=full_image.size[1],
-        crop_offset=crop_offset,
-    )
-
-    room_debug = draw_room_candidates(drawing_crop, assigned_rooms)
-
-    text_df = build_text_candidates_df(classified_items)
-    rooms_df = build_rooms_df(assigned_rooms)
-    label_matches_df = build_label_room_matches_df(
-        label_candidates=label_candidates,
-        rooms=assigned_rooms,
-        page_w=page_w,
-        page_h=page_h,
-        img_w=full_image.size[0],
-        img_h=full_image.size[1],
-        crop_offset=crop_offset,
-    )
-    final_df = build_final_output_df(label_matches_df)
-    final_debug_df = build_final_debug_df(label_matches_df)
-    comparison_df = None
-    if expected_csv_path:
-        comparison_df = compare_with_expected(rooms_df.copy(), expected_csv_path)
 
     return {
+        "page_number": page_number,
+        "page_size": (page_w, page_h),
         "full_image": full_image,
-        "drawing_crop": drawing_crop,
         "page_region_debug": page_region_debug,
-        "room_debug": room_debug,
         "page_regions": page_regions,
+        "text_extraction_mode": extraction_payload["mode"],
+        "ocr_available": extraction_payload["ocr_available"],
+        "ocr_attempted": extraction_payload["ocr_attempted"],
+        "vector_alpha_count": extraction_payload["vector_alpha_count"],
+        "ocr_alpha_count": extraction_payload["ocr_alpha_count"],
+        "ocr_rotation_hits": extraction_payload["ocr_rotation_hits"],
+        "scale_ratio": area_meta["scale_ratio"],
+        "area_polygon_count": area_meta["polygon_count"],
+        "resolved_area_count": area_meta["resolved_area_count"],
+        "unresolved_area_count": area_meta["unresolved_area_count"],
         "raw_words": raw_words,
-        "grouped_phrases": grouped_phrases,
+        "reconstructed_blocks": reconstructed_blocks,
         "classified_items": classified_items,
         "label_candidates": label_candidates,
-        "room_candidates": assigned_rooms,
+        "fused_label_candidates": fused_label_candidates,
+        "text_candidate_count": len(classified_items),
+        "final_label_count": len(fused_label_candidates),
+    }
+
+
+def run_pipeline(pdf_path: str, expected_csv_path: str | None = None) -> Dict[str, Any]:
+    page_count = get_page_count(pdf_path)
+    page_results = [_run_page_pipeline(pdf_path, page_number) for page_number in range(page_count)]
+
+    raw_words = [item for page in page_results for item in page["raw_words"]]
+    reconstructed_blocks = [item for page in page_results for item in page["reconstructed_blocks"]]
+    classified_items = [item for page in page_results for item in page["classified_items"]]
+    label_candidates = [item for page in page_results for item in page["label_candidates"]]
+    fused_label_candidates = [item for page in page_results for item in page["fused_label_candidates"]]
+
+    text_df = build_text_candidates_df(classified_items)
+    final_client_df = build_final_client_instances_df(fused_label_candidates)
+    final_client_debug_df = build_final_client_instances_debug_df(fused_label_candidates)
+
+    comparison_df = None
+    if expected_csv_path and Path(expected_csv_path).exists():
+        comparison_df = compare_with_expected(final_client_df, expected_csv_path)
+
+    first_page = page_results[0] if page_results else None
+
+    return {
+        "page_count": page_count,
+        "page_results": page_results,
+        "full_image": first_page["full_image"] if first_page else None,
+        "page_region_debug": first_page["page_region_debug"] if first_page else None,
+        "page_regions": first_page["page_regions"] if first_page else None,
+        "raw_words": raw_words,
+        "reconstructed_blocks": reconstructed_blocks,
+        "classified_items": classified_items,
+        "label_candidates": label_candidates,
         "text_df": text_df,
-        "rooms_df": rooms_df,
-        "label_matches_df": label_matches_df,
+        "final_client_df": final_client_df,
+        "final_client_debug_df": final_client_debug_df,
+        "fused_label_candidates": fused_label_candidates,
         "comparison_df": comparison_df,
-        "crop_offset": crop_offset,
-        "final_df": final_df,
-        "final_debug_df": final_debug_df,
     }
