@@ -28,6 +28,34 @@ from src.instance_export import (
 )
 
 
+def _classify_page_items(
+    raw_words,
+    page_regions,
+    page_w: float,
+    page_h: float,
+    img_w: int,
+    img_h: int,
+) -> Dict[str, Any]:
+    reconstructed_blocks = reconstruct_text_blocks(raw_words)
+    reconstructed_blocks = deduplicate_blocks(reconstructed_blocks)
+    reconstructed_blocks = assign_region_type(
+        reconstructed_blocks,
+        page_regions=page_regions,
+        page_w=page_w,
+        page_h=page_h,
+        img_w=img_w,
+        img_h=img_h,
+    )
+
+    classified_items = classify_text_items(reconstructed_blocks)
+    label_candidates = keep_room_label_candidates(classified_items)
+    return {
+        "reconstructed_blocks": reconstructed_blocks,
+        "classified_items": classified_items,
+        "label_candidates": label_candidates,
+    }
+
+
 def _run_page_pipeline(pdf_path: str, page_number: int) -> Dict[str, Any]:
     page_w, page_h = get_page_size(pdf_path, page_number=page_number)
     full_image = render_pdf_page(pdf_path, page_number=page_number, dpi=RENDER_DPI)
@@ -41,20 +69,36 @@ def _run_page_pipeline(pdf_path: str, page_number: int) -> Dict[str, Any]:
 
     extraction_payload = extract_text_payload(pdf_path, page_number=page_number)
     raw_words = extraction_payload["items"]
-    reconstructed_blocks = reconstruct_text_blocks(raw_words)
-    reconstructed_blocks = deduplicate_blocks(reconstructed_blocks)
-
-    reconstructed_blocks = assign_region_type(
-        reconstructed_blocks,
+    page_text_state = _classify_page_items(
+        raw_words,
         page_regions=page_regions,
         page_w=page_w,
         page_h=page_h,
         img_w=full_image.size[0],
         img_h=full_image.size[1],
     )
+    reconstructed_blocks = page_text_state["reconstructed_blocks"]
+    classified_items = page_text_state["classified_items"]
+    label_candidates = page_text_state["label_candidates"]
 
-    classified_items = classify_text_items(reconstructed_blocks)
-    label_candidates = keep_room_label_candidates(classified_items)
+    if not label_candidates and extraction_payload["ocr_available"] and extraction_payload["mode"] == "pdf_line":
+        ocr_payload = extract_text_payload(pdf_path, page_number=page_number, force_ocr=True)
+        ocr_raw_words = ocr_payload["items"]
+        ocr_text_state = _classify_page_items(
+            ocr_raw_words,
+            page_regions=page_regions,
+            page_w=page_w,
+            page_h=page_h,
+            img_w=full_image.size[0],
+            img_h=full_image.size[1],
+        )
+        if len(ocr_text_state["label_candidates"]) > len(label_candidates):
+            extraction_payload = ocr_payload
+            raw_words = ocr_raw_words
+            reconstructed_blocks = ocr_text_state["reconstructed_blocks"]
+            classified_items = ocr_text_state["classified_items"]
+            label_candidates = ocr_text_state["label_candidates"]
+
     fused_label_candidates = fuse_label_candidates(label_candidates)
     attach_nearby_area_annotations(fused_label_candidates, classified_items)
     area_meta = estimate_page_label_areas(pdf_path, page_number, fused_label_candidates)

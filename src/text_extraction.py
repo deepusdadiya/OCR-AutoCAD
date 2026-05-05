@@ -16,7 +16,7 @@ def _alpha_item_count(items: List[TextItem]) -> int:
     return sum(1 for item in items if has_alpha(item.text))
 
 
-def extract_text_payload(pdf_path: str, page_number: int = 0) -> Dict[str, Any]:
+def extract_text_payload(pdf_path: str, page_number: int = 0, force_ocr: bool = False) -> Dict[str, Any]:
     vector_items = extract_pdf_lines(pdf_path, page_number=page_number)
     vector_alpha_count = _alpha_item_count(vector_items)
 
@@ -30,7 +30,7 @@ def extract_text_payload(pdf_path: str, page_number: int = 0) -> Dict[str, Any]:
         "ocr_rotation_hits": {},
     }
 
-    should_try_ocr = ENABLE_OCR_FALLBACK and vector_alpha_count < OCR_MIN_ALPHA_ITEMS_TRIGGER
+    should_try_ocr = ENABLE_OCR_FALLBACK and (force_ocr or vector_alpha_count < OCR_MIN_ALPHA_ITEMS_TRIGGER)
     if not should_try_ocr:
         return payload
 

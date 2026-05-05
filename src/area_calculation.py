@@ -1,13 +1,14 @@
 import re
 from collections import defaultdict
 from fractions import Fraction
-from math import exp, sqrt
+from math import exp, log, sqrt
 from statistics import median
 from typing import Any, Dict, List, Tuple
 
 import fitz
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import polygonize, unary_union
+from shapely.strtree import STRtree
 
 from config import (
     OCR_CONFIDENCE_THRESHOLD,
@@ -56,6 +57,9 @@ ARCHITECTURAL_SCALE_PATTERN = re.compile(
     r"(?P<draw>\d+(?:/\d+)?)\s*\"\s*=\s*(?P<feet>\d+)\s*'\s*(?:[- ]\s*(?P<inches>\d+)\s*\")?"
 )
 SCALE_KEYWORD_PATTERN = re.compile(r"\bSCALE\b")
+SIZE_ANNOTATION_PATTERN = re.compile(
+    r"(?:SIZE[:=-]?\s*)?(\d+(?:\.\d+)?)\s*(MM|CM|M)?\s*[Xx]\s*(\d+(?:\.\d+)?)\s*(MM|CM|M)?"
+)
 
 
 def _ratio_from_numeric_scale(left: float, right: float) -> float | None:
@@ -253,9 +257,20 @@ def _area_pdf_to_sqm(area_pdf: float, scale_ratio: float) -> float:
     return (area_pdf * (mm_per_pdf_unit**2)) / 1_000_000.0
 
 
+def _dimension_to_mm(value: str, unit: str | None) -> float:
+    normalized_unit = (unit or "MM").upper()
+    numeric_value = float(value)
+    if normalized_unit == "M":
+        return numeric_value * 1000.0
+    if normalized_unit == "CM":
+        return numeric_value * 10.0
+    return numeric_value
+
+
 def _infer_scale_ratio_from_embedded_areas(
     label_candidates: List[TextItem],
     polygons: List[Polygon],
+    polygon_tree: STRtree | None = None,
 ) -> float | None:
     inferred_ratios: List[float] = []
     pdf_unit_to_mm = 25.4 / 72.0
@@ -264,7 +279,7 @@ def _infer_scale_ratio_from_embedded_areas(
         if item.embedded_area_value is None or item.embedded_area_value <= 0:
             continue
 
-        containing_indices = _find_containing_polygon_indices(Point(item.cx, item.cy), polygons)
+        containing_indices = _find_containing_polygon_indices(Point(item.cx, item.cy), polygons, polygon_tree)
         if not containing_indices:
             continue
 
@@ -288,9 +303,98 @@ def _infer_scale_ratio_from_embedded_areas(
     return float(center_ratio)
 
 
-def _find_containing_polygon_indices(point: Point, polygons: List[Polygon]) -> List[int]:
+def _infer_scale_ratio_from_size_annotations(
+    size_items: List[TextItem],
+    polygons: List[Polygon],
+) -> float | None:
+    if not size_items or not polygons:
+        return None
+
+    candidate_rows: List[Tuple[float, float, float]] = []
+    pdf_unit_to_mm = 25.4 / 72.0
+
+    for item in size_items:
+        match = SIZE_ANNOTATION_PATTERN.search(normalize_text(item.text))
+        if match is None:
+            continue
+
+        real_dims_mm = sorted(
+            [
+                _dimension_to_mm(match.group(1), match.group(2)),
+                _dimension_to_mm(match.group(3), match.group(4)),
+            ],
+            reverse=True,
+        )
+
+        item_point = Point(item.cx, item.cy)
+        local_candidates: List[Tuple[float, float, float]] = []
+        for polygon in polygons:
+            min_x, min_y, max_x, max_y = polygon.bounds
+            pdf_dims = sorted([max_x - min_x, max_y - min_y], reverse=True)
+            if pdf_dims[1] <= 1.0:
+                continue
+
+            distance = item_point.distance(polygon)
+            if distance > 2.0:
+                continue
+
+            real_ratio = real_dims_mm[0] / max(real_dims_mm[1], 1.0)
+            pdf_ratio = pdf_dims[0] / max(pdf_dims[1], 1e-6)
+            aspect_error = abs(log(real_ratio / pdf_ratio))
+            if aspect_error > 0.35:
+                continue
+
+            scale_w = (real_dims_mm[0] / pdf_dims[0]) / pdf_unit_to_mm
+            scale_h = (real_dims_mm[1] / pdf_dims[1]) / pdf_unit_to_mm
+            if not (20.0 <= scale_w <= 1000.0 and 20.0 <= scale_h <= 1000.0):
+                continue
+            if abs(log(scale_w / scale_h)) > 0.3:
+                continue
+
+            local_candidates.append((distance, aspect_error, (scale_w + scale_h) / 2.0))
+
+        if not local_candidates:
+            continue
+
+        candidate_rows.append(min(local_candidates, key=lambda row: (row[0], row[1])))
+
+    if len(candidate_rows) < 3:
+        return None
+
+    scales = [row[2] for row in candidate_rows]
+    best_cluster: List[Tuple[float, float, float]] = []
+    for center_scale in scales:
+        cluster = [
+            row
+            for row in candidate_rows
+            if 0.82 <= (row[2] / center_scale) <= 1.22
+        ]
+        if len(cluster) > len(best_cluster):
+            best_cluster = cluster
+            continue
+        if len(cluster) == len(best_cluster) and cluster:
+            cluster_distance = median(row[0] for row in cluster)
+            best_distance = median(row[0] for row in best_cluster) if best_cluster else float("inf")
+            if cluster_distance < best_distance:
+                best_cluster = cluster
+
+    if len(best_cluster) < 3:
+        return None
+
+    return float(median(row[2] for row in best_cluster))
+
+
+def _find_containing_polygon_indices(
+    point: Point,
+    polygons: List[Polygon],
+    polygon_tree: STRtree | None = None,
+) -> List[int]:
+    candidate_indices = range(len(polygons))
+    if polygon_tree is not None and polygons:
+        candidate_indices = polygon_tree.query(point.buffer(0.5))
+
     return sorted(
-        [index for index, polygon in enumerate(polygons) if polygon.buffer(0.5).contains(point)],
+        [int(index) for index in candidate_indices if polygons[int(index)].buffer(0.5).contains(point)],
         key=lambda index: polygons[index].area,
     )
 
@@ -299,8 +403,9 @@ def _smallest_containing_area_sqm(
     point: Point,
     polygons: List[Polygon],
     polygon_areas_sqm: List[float],
+    polygon_tree: STRtree | None = None,
 ) -> Tuple[int | None, float | None]:
-    containing = _find_containing_polygon_indices(point, polygons)
+    containing = _find_containing_polygon_indices(point, polygons, polygon_tree)
     if not containing:
         return None, None
     smallest_idx = containing[0]
@@ -311,8 +416,9 @@ def _find_parent_polygon_index(
     point: Point,
     polygons: List[Polygon],
     polygon_areas_sqm: List[float],
+    polygon_tree: STRtree | None = None,
 ) -> int | None:
-    for index in _find_containing_polygon_indices(point, polygons):
+    for index in _find_containing_polygon_indices(point, polygons, polygon_tree):
         area_sqm = polygon_areas_sqm[index]
         if MAX_EXACT_VECTOR_AREA_SQM < area_sqm < 2000.0:
             return index
@@ -380,6 +486,7 @@ def _assign_sparse_isolated_fragment_areas(
     all_items: List[TextItem],
     polygons: List[Polygon],
     polygon_areas_sqm: List[float],
+    polygon_tree: STRtree | None = None,
 ) -> None:
     if not unresolved_items:
         return
@@ -387,7 +494,7 @@ def _assign_sparse_isolated_fragment_areas(
     unresolved_by_parent: Dict[int, List[TextItem]] = defaultdict(list)
     for item in unresolved_items:
         point = Point(item.cx, item.cy)
-        parent_index = _find_parent_polygon_index(point, polygons, polygon_areas_sqm)
+        parent_index = _find_parent_polygon_index(point, polygons, polygon_areas_sqm, polygon_tree)
         if parent_index is None:
             continue
         unresolved_by_parent[parent_index].append(item)
@@ -407,7 +514,7 @@ def _assign_sparse_isolated_fragment_areas(
             continue
 
         point = item_points[id(item)]
-        parent_index = _find_parent_polygon_index(point, polygons, polygon_areas_sqm)
+        parent_index = _find_parent_polygon_index(point, polygons, polygon_areas_sqm, polygon_tree)
         if parent_index is None or len(unresolved_by_parent.get(parent_index, [])) != 1:
             continue
 
@@ -444,13 +551,14 @@ def _reopen_networked_closed_gap_labels(
     label_candidates: List[TextItem],
     polygons: List[Polygon],
     polygon_areas_sqm: List[float],
+    polygon_tree: STRtree | None = None,
 ) -> None:
     for item in label_candidates:
         if item.area_method != "vector_polygon_closed_gap":
             continue
 
         point = Point(item.cx, item.cy)
-        polygon_index, polygon_area_sqm = _smallest_containing_area_sqm(point, polygons, polygon_areas_sqm)
+        polygon_index, polygon_area_sqm = _smallest_containing_area_sqm(point, polygons, polygon_areas_sqm, polygon_tree)
         if polygon_index is None or polygon_area_sqm is None:
             continue
 
@@ -476,13 +584,19 @@ def _assign_direct_second_pass_areas(
     label_candidates: List[TextItem],
     enhanced_polygons: List[Polygon],
     enhanced_polygon_areas_sqm: List[float],
+    enhanced_polygon_tree: STRtree | None = None,
 ) -> None:
     for item in label_candidates:
         if item.area_value is not None:
             continue
 
         point = Point(item.cx, item.cy)
-        polygon_index, area_sqm = _smallest_containing_area_sqm(point, enhanced_polygons, enhanced_polygon_areas_sqm)
+        polygon_index, area_sqm = _smallest_containing_area_sqm(
+            point,
+            enhanced_polygons,
+            enhanced_polygon_areas_sqm,
+            enhanced_polygon_tree,
+        )
         if polygon_index is None or area_sqm is None:
             continue
         if area_sqm > SECOND_PASS_DIRECT_MAX_AREA_SQM:
@@ -668,6 +782,7 @@ def _assign_residual_open_area(
     unresolved_items: List[TextItem],
     enhanced_polygons: List[Polygon],
     enhanced_polygon_areas_sqm: List[float],
+    enhanced_polygon_tree: STRtree | None = None,
 ) -> None:
     parent_groups: Dict[int, List[TextItem]] = defaultdict(list)
     nearest_fragment_distance: Dict[int, float] = {}
@@ -678,7 +793,12 @@ def _assign_residual_open_area(
         if item.area_value is not None:
             continue
         point = Point(item.cx, item.cy)
-        parent_index = _find_parent_polygon_index(point, enhanced_polygons, enhanced_polygon_areas_sqm)
+        parent_index = _find_parent_polygon_index(
+            point,
+            enhanced_polygons,
+            enhanced_polygon_areas_sqm,
+            enhanced_polygon_tree,
+        )
         if parent_index is None:
             continue
         parent_groups[parent_index].append(item)
@@ -790,13 +910,15 @@ def estimate_page_label_areas(
 ) -> Dict[str, Any]:
     scale_ratio = extract_page_scale_ratio(pdf_path, page_number)
     polygons = build_page_vector_polygons(pdf_path, page_number)
+    polygon_tree = STRtree(polygons) if polygons else None
     if scale_ratio is None and polygons:
-        scale_ratio = _infer_scale_ratio_from_embedded_areas(label_candidates, polygons)
+        scale_ratio = _infer_scale_ratio_from_embedded_areas(label_candidates, polygons, polygon_tree)
+    if scale_ratio is None and polygons:
+        scale_ratio = _infer_scale_ratio_from_size_annotations(
+            extract_pdf_lines(pdf_path, page_number=page_number),
+            polygons,
+        )
     polygon_areas_sqm = [_area_pdf_to_sqm(polygon.area, scale_ratio) for polygon in polygons] if scale_ratio else []
-    enhanced_polygons = build_page_vector_polygons(pdf_path, page_number, close_door_arcs=True)
-    enhanced_polygon_areas_sqm = (
-        [_area_pdf_to_sqm(polygon.area, scale_ratio) for polygon in enhanced_polygons] if scale_ratio else []
-    )
 
     resolved_count = 0
     unresolved_count = 0
@@ -823,7 +945,7 @@ def estimate_page_label_areas(
 
     for item in label_candidates:
         point = Point(item.cx, item.cy)
-        containing_indices = _find_containing_polygon_indices(point, polygons)
+        containing_indices = _find_containing_polygon_indices(point, polygons, polygon_tree)
 
         if not containing_indices:
             if item.embedded_area_value is not None:
@@ -849,16 +971,35 @@ def estimate_page_label_areas(
                 item.area_method = "unresolved"
                 item.area_confidence = 0.0
 
+    high_complexity_page = len(polygons) > 2000 and len(label_candidates) > 150
+    if high_complexity_page:
+        resolved_count = sum(1 for item in label_candidates if item.area_value is not None)
+        unresolved_count = len(label_candidates) - resolved_count
+        return {
+            "scale_ratio": scale_ratio,
+            "polygon_count": len(polygons),
+            "resolved_area_count": resolved_count,
+            "unresolved_area_count": unresolved_count,
+        }
+
+    enhanced_polygons = build_page_vector_polygons(pdf_path, page_number, close_door_arcs=True)
+    enhanced_polygon_tree = STRtree(enhanced_polygons) if enhanced_polygons else None
+    enhanced_polygon_areas_sqm = (
+        [_area_pdf_to_sqm(polygon.area, scale_ratio) for polygon in enhanced_polygons] if scale_ratio else []
+    )
+
     if enhanced_polygons and enhanced_polygon_areas_sqm:
         _assign_direct_second_pass_areas(
             label_candidates,
             enhanced_polygons,
             enhanced_polygon_areas_sqm,
+            enhanced_polygon_tree,
         )
         _reopen_networked_closed_gap_labels(
             label_candidates,
             enhanced_polygons,
             enhanced_polygon_areas_sqm,
+            enhanced_polygon_tree,
         )
 
     unresolved_items = [item for item in label_candidates if item.area_value is None]
@@ -878,6 +1019,7 @@ def estimate_page_label_areas(
             label_candidates,
             enhanced_polygons,
             enhanced_polygon_areas_sqm,
+            enhanced_polygon_tree,
         )
 
     unresolved_items = [item for item in label_candidates if item.area_value is None]
@@ -887,6 +1029,7 @@ def estimate_page_label_areas(
             unresolved_items,
             enhanced_polygons,
             enhanced_polygon_areas_sqm,
+            enhanced_polygon_tree,
         )
 
     for item in label_candidates:

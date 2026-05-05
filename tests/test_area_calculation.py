@@ -10,7 +10,13 @@ if str(REPO_ROOT) not in sys.path:
 from config import INPUT_PDF  # noqa: E402
 from shapely.geometry import Polygon  # noqa: E402
 
-from src.area_calculation import _area_pdf_to_sqm, _extract_scale_ratio, _infer_scale_ratio_from_embedded_areas, extract_page_scale_ratio  # noqa: E402
+from src.area_calculation import (  # noqa: E402
+    _area_pdf_to_sqm,
+    _extract_scale_ratio,
+    _infer_scale_ratio_from_embedded_areas,
+    _infer_scale_ratio_from_size_annotations,
+    extract_page_scale_ratio,
+)
 from src.models import TextItem  # noqa: E402
 from src.pipeline import run_pipeline  # noqa: E402
 
@@ -43,6 +49,22 @@ class AreaCalculationTests(unittest.TestCase):
         inferred_ratio = _infer_scale_ratio_from_embedded_areas([item], [polygon])
         self.assertIsNotNone(inferred_ratio)
         self.assertAlmostEqual(float(inferred_ratio), 100.0, places=3)
+
+    def test_infers_scale_ratio_from_size_annotations(self) -> None:
+        polygons = [
+            Polygon([(0, 0), (10, 0), (10, 5), (0, 5)]),
+            Polygon([(20, 0), (30, 0), (30, 5), (20, 5)]),
+            Polygon([(40, 0), (50, 0), (50, 5), (40, 5)]),
+        ]
+        size_items = [
+            TextItem(text="SIZE-1000X500", x0=1, y0=1, x1=9, y1=4),
+            TextItem(text="SIZE-1000X500", x0=21, y0=1, x1=29, y1=4),
+            TextItem(text="SIZE-1000X500", x0=41, y0=1, x1=49, y1=4),
+        ]
+
+        inferred_ratio = _infer_scale_ratio_from_size_annotations(size_items, polygons)
+        self.assertIsNotNone(inferred_ratio)
+        self.assertAlmostEqual(float(inferred_ratio), 283.4645669, places=3)
 
     def test_resolves_exact_closed_room_areas(self) -> None:
         result = run_pipeline(str(INPUT_PDF), None)
