@@ -2,7 +2,6 @@ from collections import defaultdict
 from functools import lru_cache
 from typing import Any, Dict, List, Tuple
 
-import cv2
 import numpy as np
 from PIL import Image
 
@@ -25,6 +24,15 @@ def _load_pytesseract() -> Any | None:
 
 
 @lru_cache(maxsize=1)
+def _load_cv2() -> Any | None:
+    try:
+        import cv2  # type: ignore
+    except Exception:
+        return None
+    return cv2
+
+
+@lru_cache(maxsize=1)
 def _load_rapidocr() -> Any | None:
     try:
         from rapidocr_onnxruntime import RapidOCR  # type: ignore
@@ -38,10 +46,13 @@ def _load_rapidocr() -> Any | None:
 
 
 def ocr_backend_available() -> bool:
-    return _load_pytesseract() is not None or _load_rapidocr() is not None
+    return _load_cv2() is not None and (_load_pytesseract() is not None or _load_rapidocr() is not None)
 
 
 def _preprocess_image(image: Image.Image) -> np.ndarray:
+    cv2 = _load_cv2()
+    if cv2 is None:
+        raise RuntimeError("OpenCV is not available")
     img = np.array(image)
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     denoised = cv2.GaussianBlur(gray, (3, 3), 0)
@@ -50,6 +61,9 @@ def _preprocess_image(image: Image.Image) -> np.ndarray:
 
 
 def _rotation_variants(image: np.ndarray) -> List[Tuple[str, np.ndarray]]:
+    cv2 = _load_cv2()
+    if cv2 is None:
+        return [("base", image)]
     return [
         ("base", image),
         ("cw90", cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)),
@@ -297,6 +311,10 @@ def extract_ocr_lines(
     page_number: int,
     confidence_threshold: int = 55,
 ) -> Tuple[List[TextItem], Dict[str, Any]]:
+    cv2 = _load_cv2()
+    if cv2 is None:
+        return [], {"ocr_available": False, "ocr_attempted": False, "ocr_rotation_hits": {}}
+
     pytesseract = _load_pytesseract()
     processed = _preprocess_image(image)
     if pytesseract is not None:
