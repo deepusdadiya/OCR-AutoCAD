@@ -112,9 +112,24 @@ else:
 
     with tab4:
         if result["comparison_df"] is not None:
-            st.dataframe(result["comparison_df"], width="stretch")
-            matched = int(result["comparison_df"]["matched"].sum())
+            st.dataframe(
+                result["comparison_df"],
+                width="stretch",
+                column_config={
+                    "predicted_name": st.column_config.TextColumn("Predicted Name"),
+                    "expected_name": st.column_config.TextColumn("Expected Name"),
+                    "predicted_area": st.column_config.NumberColumn("Predicted Area (sqmm)", format="%.2f"),
+                    "expected_area": st.column_config.NumberColumn("Expected Area (sqmm)", format="%.2f"),
+                    "Name_Matched": st.column_config.CheckboxColumn("Name Matched"),
+                    "Area_Matched": st.column_config.CheckboxColumn("Area Matched"),
+                },
+                hide_index=True,
+            )
+            matched = int(result["comparison_df"]["Name_Matched"].sum())
+            area_matched = int(result["comparison_df"]["Area_Matched"].sum())
             total = len(result["comparison_df"])
-            st.metric("Matched expected names", f"{matched}/{total}")
+            metric_col1, metric_col2 = st.columns(2)
+            metric_col1.metric("Matched expected names", f"{matched}/{total}")
+            metric_col2.metric("Matched expected areas", f"{area_matched}/{total}")
         else:
             st.info("No expected CSV provided for this run.")
