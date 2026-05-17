@@ -28,7 +28,7 @@ class TextRegressionTests(unittest.TestCase):
                 comparison_df = result["comparison_df"]
                 self.assertIsNotNone(comparison_df)
 
-                matched = int(comparison_df["matched"].sum())
+                matched = int(comparison_df["Name_Matched"].sum())
                 expected_count = len(comparison_df)
                 match_rate = matched / expected_count if expected_count else 0.0
 
