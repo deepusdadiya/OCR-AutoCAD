@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 from config import INPUT_PDF, OUTPUT_DIR
+from src.area_visualization import save_area_boundaries_visualization_pdf
 from src.pipeline import run_pipeline
 from src.runtime_inputs import resolve_expected_csv_path, resolve_pdf_path
 
@@ -57,6 +58,7 @@ def main():
     final_client_debug_df.to_csv(final_client_debug_path, index=False)
     if comparison_df is not None:
         comparison_df.to_csv(comparison_path, index=False)
+    visualization_path = save_area_boundaries_visualization_pdf(pdf_path, result["page_results"], OUTPUT_DIR)
 
     print(f"Input PDF: {pdf_path}")
     if expected_csv_path is not None:
@@ -68,6 +70,8 @@ def main():
     print(f"Saved: {text_path}")
     print(f"Saved: {final_client_path}")
     print(f"Saved: {final_client_debug_path}")
+    if visualization_path is not None:
+        print(f"Saved: {visualization_path}")
     if comparison_df is not None:
         print(f"Saved: {comparison_path}")
 

@@ -79,8 +79,19 @@ class AreaCalculationTests(unittest.TestCase):
         debug_df = result["final_client_debug_df"].set_index("Name")
 
         self.assertEqual(debug_df.loc["F.TOILET", "area_method"], "vector_polygon_closed_gap")
-        self.assertGreater(float(debug_df.loc["PANTRY", "Area (sqmm)"]), 3.0)
-        self.assertLess(float(debug_df.loc["PANTRY", "Area (sqmm)"]), 5.0)
+        self.assertAlmostEqual(float(debug_df.loc["F.TOILET", "Area (sqmm)"]), 9.08, places=1)
+        self.assertEqual(debug_df.loc["PANTRY", "area_method"], "vector_polygon_closed_gap")
+        self.assertAlmostEqual(float(debug_df.loc["PANTRY", "Area (sqmm)"]), 4.12, places=1)
+        self.assertEqual(debug_df.loc["M.TOILET", "area_method"], "vector_polygon_closed_gap")
+        self.assertAlmostEqual(float(debug_df.loc["M.TOILET", "Area (sqmm)"]), 11.98, places=1)
+        self.assertEqual(debug_df.loc["H.TOILET", "area_method"], "vector_polygon_closed_gap")
+        self.assertAlmostEqual(float(debug_df.loc["H.TOILET", "Area (sqmm)"]), 4.15, places=1)
+        self.assertEqual(debug_df.loc["PASSAGE #1", "area_method"], "vector_polygon_closed_gap")
+        self.assertGreater(float(debug_df.loc["PASSAGE #1", "Area (sqmm)"]), 4.0)
+        self.assertLess(float(debug_df.loc["PASSAGE #1", "Area (sqmm)"]), 5.0)
+        self.assertEqual(debug_df.loc["PASSAGE #2", "area_method"], "vector_polygon_closed_gap")
+        self.assertGreater(float(debug_df.loc["PASSAGE #2", "Area (sqmm)"]), 5.0)
+        self.assertLess(float(debug_df.loc["PASSAGE #2", "Area (sqmm)"]), 5.5)
         self.assertEqual(debug_df.loc["STAIRCASE-1", "area_method"], "vector_fragment_cluster")
         self.assertGreater(float(debug_df.loc["STAIRCASE-1", "Area (sqmm)"]), 25.0)
         self.assertIn(debug_df.loc["OFFICE", "area_method"], {"vector_open_residual", "vector_open_residual_partition"})
@@ -94,6 +105,17 @@ class AreaCalculationTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertNotEqual(str(debug_df.loc[name, "Area (sqmm)"]).strip(), "")
                 self.assertNotEqual(debug_df.loc[name, "area_method"], "unresolved")
+
+    def test_area_assignments_store_geometry_references(self) -> None:
+        result = run_pipeline(str(INPUT_PDF), None)
+        items_by_name = {item.text: item for item in result["fused_label_candidates"]}
+
+        self.assertTrue(items_by_name["LIFT B1"].area_geometry_refs)
+        self.assertEqual(items_by_name["LIFT B1"].area_geometry_refs[0][0], "base")
+        self.assertTrue(items_by_name["PANTRY"].area_geometry_refs)
+        self.assertEqual(items_by_name["PANTRY"].area_geometry_refs[0][0], "door_aware")
+        self.assertTrue(items_by_name["LOBBY-4"].area_geometry_refs)
+        self.assertEqual(items_by_name["LOBBY-4"].area_geometry_refs[0][0], "enhanced")
 
 
 if __name__ == "__main__":

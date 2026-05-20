@@ -25,6 +25,7 @@ class TextItem:
     area_value: Optional[float] = None
     area_method: str = ""
     area_confidence: float = 0.0
+    area_geometry_refs: List[Tuple[str, int]] = field(default_factory=list)
 
     @property
     def cx(self) -> float:
