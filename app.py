@@ -4,7 +4,8 @@ from typing import Any
 
 import streamlit as st
 
-from config import INPUT_PDF
+from config import INPUT_PDF, OUTPUT_DIR
+from src.area_visualization import save_area_boundaries_visualization_pdf
 from src.pipeline import run_pipeline
 from src.runtime_inputs import resolve_expected_csv_path
 
@@ -16,6 +17,7 @@ if "pipeline_result" not in st.session_state:
     st.session_state["pipeline_result"] = None
     st.session_state["pipeline_source"] = ""
     st.session_state["pipeline_expected"] = ""
+    st.session_state["pipeline_visualization"] = ""
 
 
 def _write_uploaded_file(uploaded_file: Any, directory: Path) -> Path:
@@ -27,21 +29,23 @@ def _write_uploaded_file(uploaded_file: Any, directory: Path) -> Path:
 def _run_selected_pipeline(
     pdf_upload: Any | None,
     expected_upload: Any | None,
-) -> tuple[dict, str, str]:
+) -> tuple[dict, str, str, str]:
     if pdf_upload is None:
         pdf_path = INPUT_PDF
         expected_path = resolve_expected_csv_path(pdf_path, None)
         result = run_pipeline(str(pdf_path), str(expected_path) if expected_path else None)
+        visualization_path = save_area_boundaries_visualization_pdf(pdf_path, result["page_results"], OUTPUT_DIR)
         expected_label = expected_path.name if expected_path is not None else ""
-        return result, pdf_path.name, expected_label
+        return result, pdf_path.name, expected_label, str(visualization_path or "")
 
     with TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         pdf_path = _write_uploaded_file(pdf_upload, temp_path)
         expected_path = _write_uploaded_file(expected_upload, temp_path) if expected_upload else None
         result = run_pipeline(str(pdf_path), str(expected_path) if expected_path else None)
+        visualization_path = save_area_boundaries_visualization_pdf(pdf_path, result["page_results"], OUTPUT_DIR)
         expected_label = expected_upload.name if expected_upload else ""
-        return result, pdf_upload.name, expected_label
+        return result, pdf_upload.name, expected_label, str(visualization_path or "")
 
 
 st.caption(
@@ -52,10 +56,11 @@ uploaded_expected = st.file_uploader("Expected CSV (optional)", type=["csv"])
 
 if st.button("Run Pipeline"):
     with st.spinner("Processing..."):
-        result, source_label, expected_label = _run_selected_pipeline(uploaded_pdf, uploaded_expected)
+        result, source_label, expected_label, visualization_label = _run_selected_pipeline(uploaded_pdf, uploaded_expected)
     st.session_state["pipeline_result"] = result
     st.session_state["pipeline_source"] = source_label
     st.session_state["pipeline_expected"] = expected_label
+    st.session_state["pipeline_visualization"] = visualization_label
 
 result = st.session_state["pipeline_result"]
 if result is None:
@@ -63,9 +68,12 @@ if result is None:
 else:
     source_label = st.session_state["pipeline_source"]
     expected_label = st.session_state["pipeline_expected"]
+    visualization_label = st.session_state.get("pipeline_visualization", "")
     st.caption(f"Current source: `{source_label}`")
     if expected_label:
         st.caption(f"Comparison CSV: `{expected_label}`")
+    if visualization_label:
+        st.caption(f"Saved boundary visualization: `{visualization_label}`")
 
     selected_page = st.selectbox(
         "Page",

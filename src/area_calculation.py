@@ -14,6 +14,12 @@ from config import (
     OCR_CONFIDENCE_THRESHOLD,
     OCR_RENDER_DPI,
     MIN_VECTOR_POLYGON_AREA_PDF,
+    DOOR_CURVE_MIN_SIZE_PDF,
+    DOOR_CURVE_MAX_SIZE_PDF,
+    DOOR_GAP_LINE_TOLERANCE_PDF,
+    DOOR_GAP_MAX_SPAN_PDF,
+    DOOR_GAP_CURVE_MARGIN_PDF,
+    DOOR_GAP_MIN_OVERLAP_PDF,
     MAX_EXACT_VECTOR_AREA_SQM,
     SECOND_PASS_DIRECT_MAX_AREA_SQM,
     OPEN_FRAGMENT_MAX_AREA_SQM,
@@ -167,6 +173,188 @@ def _quad_segments(quad: Any) -> List[LineString]:
     return [LineString([points[i], points[i + 1]]) for i in range(len(points) - 1)]
 
 
+def _is_grayish_color(color: Tuple[float, float, float] | None) -> bool:
+    if not color:
+        return False
+    return (max(color) - min(color)) < 0.05
+
+
+def _drawing_is_probable_symbol_layer(drawing: Dict[str, Any]) -> bool:
+    width = float(drawing.get("width") or 0.0)
+    return width <= 0.01 and _is_grayish_color(drawing.get("color"))
+
+
+def _curve_bbox(curve_item: Any) -> Tuple[float, float, float, float]:
+    points = [
+        (float(curve_item[1].x), float(curve_item[1].y)),
+        (float(curve_item[2].x), float(curve_item[2].y)),
+        (float(curve_item[3].x), float(curve_item[3].y)),
+        (float(curve_item[4].x), float(curve_item[4].y)),
+    ]
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def _is_probable_door_curve(curve_item: Any, drawing: Dict[str, Any]) -> bool:
+    min_x, min_y, max_x, max_y = _curve_bbox(curve_item)
+    width = max_x - min_x
+    height = max_y - min_y
+    if min(width, height) < DOOR_CURVE_MIN_SIZE_PDF:
+        return False
+    if max(width, height) > DOOR_CURVE_MAX_SIZE_PDF:
+        return False
+
+    aspect_ratio = max(width, height) / max(min(width, height), 1e-6)
+    if aspect_ratio > 2.5:
+        return False
+
+    return _drawing_is_probable_symbol_layer(drawing) or float(drawing.get("width") or 0.0) <= 0.01
+
+
+def _normalize_segment_points(
+    start: Tuple[float, float],
+    end: Tuple[float, float],
+) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    rounded_start = (round(float(start[0]), 2), round(float(start[1]), 2))
+    rounded_end = (round(float(end[0]), 2), round(float(end[1]), 2))
+    return (rounded_start, rounded_end) if rounded_start <= rounded_end else (rounded_end, rounded_start)
+
+
+def _segment_tuples_from_page(
+    page: fitz.Page,
+    include_symbol_segments: bool,
+) -> Tuple[List[Tuple[Tuple[float, float], Tuple[float, float]]], List[Tuple[float, float, float, float]]]:
+    segment_tuples: List[Tuple[Tuple[float, float], Tuple[float, float]]] = []
+    door_curve_bboxes: List[Tuple[float, float, float, float]] = []
+
+    for drawing in page.get_drawings():
+        items = drawing.get("items", [])
+        symbol_layer = _drawing_is_probable_symbol_layer(drawing)
+
+        for item in items:
+            if item[0] == "c" and _is_probable_door_curve(item, drawing):
+                door_curve_bboxes.append(_curve_bbox(item))
+
+        if symbol_layer and not include_symbol_segments:
+            continue
+
+        for item in items:
+            kind = item[0]
+            if kind == "l":
+                p1, p2 = item[1], item[2]
+                segment_tuples.append(
+                    _normalize_segment_points(
+                        (float(p1.x), float(p1.y)),
+                        (float(p2.x), float(p2.y)),
+                    )
+                )
+            elif kind == "qu":
+                for segment in _quad_segments(item[1]):
+                    start, end = list(segment.coords)
+                    segment_tuples.append(_normalize_segment_points(start, end))
+
+    return segment_tuples, door_curve_bboxes
+
+
+def _merge_axis_intervals(intervals: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
+    if not intervals:
+        return []
+
+    ordered = sorted(intervals)
+    merged: List[List[float]] = [list(ordered[0])]
+    for start, end in ordered[1:]:
+        if start <= merged[-1][1] + DOOR_GAP_LINE_TOLERANCE_PDF:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+
+    return [(start, end) for start, end in merged]
+
+
+def _build_axis_interval_index(
+    segment_tuples: List[Tuple[Tuple[float, float], Tuple[float, float]]],
+) -> Tuple[Dict[float, List[Tuple[float, float]]], Dict[float, List[Tuple[float, float]]]]:
+    vertical: Dict[float, List[Tuple[float, float]]] = defaultdict(list)
+    horizontal: Dict[float, List[Tuple[float, float]]] = defaultdict(list)
+
+    for start, end in segment_tuples:
+        if abs(start[0] - end[0]) <= DOOR_GAP_LINE_TOLERANCE_PDF:
+            x = round((start[0] + end[0]) / 2.0, 2)
+            y0, y1 = sorted((start[1], end[1]))
+            vertical[x].append((y0, y1))
+        elif abs(start[1] - end[1]) <= DOOR_GAP_LINE_TOLERANCE_PDF:
+            y = round((start[1] + end[1]) / 2.0, 2)
+            x0, x1 = sorted((start[0], end[0]))
+            horizontal[y].append((x0, x1))
+
+    return (
+        {x: _merge_axis_intervals(intervals) for x, intervals in vertical.items()},
+        {y: _merge_axis_intervals(intervals) for y, intervals in horizontal.items()},
+    )
+
+
+def _detect_door_gap_bridge_segments(
+    segment_tuples: List[Tuple[Tuple[float, float], Tuple[float, float]]],
+    door_curve_bboxes: List[Tuple[float, float, float, float]],
+) -> List[Tuple[Tuple[float, float], Tuple[float, float]]]:
+    if not segment_tuples or not door_curve_bboxes:
+        return []
+
+    vertical, horizontal = _build_axis_interval_index(segment_tuples)
+    bridge_segments: set[Tuple[Tuple[float, float], Tuple[float, float]]] = set()
+
+    for min_x, min_y, max_x, max_y in door_curve_bboxes:
+        expanded_x0 = min_x - DOOR_GAP_CURVE_MARGIN_PDF
+        expanded_y0 = min_y - DOOR_GAP_CURVE_MARGIN_PDF
+        expanded_x1 = max_x + DOOR_GAP_CURVE_MARGIN_PDF
+        expanded_y1 = max_y + DOOR_GAP_CURVE_MARGIN_PDF
+
+        for x, intervals in vertical.items():
+            if x < expanded_x0 or x > expanded_x1:
+                continue
+
+            for (first_start, first_end), (second_start, second_end) in zip(intervals, intervals[1:]):
+                gap_start = first_end
+                gap_end = second_start
+                gap_span = gap_end - gap_start
+                if gap_span <= DOOR_GAP_LINE_TOLERANCE_PDF or gap_span > DOOR_GAP_MAX_SPAN_PDF:
+                    continue
+
+                gap_mid = (gap_start + gap_end) / 2.0
+                if gap_mid < expanded_y0 or gap_mid > expanded_y1:
+                    continue
+
+                overlap = min(gap_end, expanded_y1) - max(gap_start, expanded_y0)
+                if overlap < DOOR_GAP_MIN_OVERLAP_PDF:
+                    continue
+
+                bridge_segments.add(_normalize_segment_points((x, gap_start), (x, gap_end)))
+
+        for y, intervals in horizontal.items():
+            if y < expanded_y0 or y > expanded_y1:
+                continue
+
+            for (first_start, first_end), (second_start, second_end) in zip(intervals, intervals[1:]):
+                gap_start = first_end
+                gap_end = second_start
+                gap_span = gap_end - gap_start
+                if gap_span <= DOOR_GAP_LINE_TOLERANCE_PDF or gap_span > DOOR_GAP_MAX_SPAN_PDF:
+                    continue
+
+                gap_mid = (gap_start + gap_end) / 2.0
+                if gap_mid < expanded_x0 or gap_mid > expanded_x1:
+                    continue
+
+                overlap = min(gap_end, expanded_x1) - max(gap_start, expanded_x0)
+                if overlap < DOOR_GAP_MIN_OVERLAP_PDF:
+                    continue
+
+                bridge_segments.add(_normalize_segment_points((gap_start, y), (gap_end, y)))
+
+    return sorted(bridge_segments)
+
+
 def _curve_closure_segments(curve_item: Any) -> List[LineString]:
     start = (float(curve_item[1].x), float(curve_item[1].y))
     ctrl1 = (float(curve_item[2].x), float(curve_item[2].y))
@@ -208,42 +396,48 @@ def build_page_vector_polygons(
     pdf_path: str,
     page_number: int,
     close_door_arcs: bool = False,
+    use_door_gap_bridges: bool = False,
 ) -> List[Polygon]:
     doc = fitz.open(pdf_path)
     page = doc[page_number]
-
-    segments: List[LineString] = []
-    for drawing in page.get_drawings():
-        for item in drawing.get("items", []):
-            kind = item[0]
-            if kind == "l":
-                p1, p2 = item[1], item[2]
-                segments.append(
-                    LineString(
-                        [
-                            (round(float(p1.x), 2), round(float(p1.y), 2)),
-                            (round(float(p2.x), 2), round(float(p2.y), 2)),
-                        ]
-                    )
-                )
-            elif kind == "qu":
-                for segment in _quad_segments(item[1]):
+    if use_door_gap_bridges:
+        segment_tuples, door_curve_bboxes = _segment_tuples_from_page(page, include_symbol_segments=False)
+        segment_tuples.extend(_detect_door_gap_bridge_segments(segment_tuples, door_curve_bboxes))
+    else:
+        segments: List[LineString] = []
+        for drawing in page.get_drawings():
+            for item in drawing.get("items", []):
+                kind = item[0]
+                if kind == "l":
+                    p1, p2 = item[1], item[2]
                     segments.append(
                         LineString(
                             [
-                                (round(segment.coords[0][0], 2), round(segment.coords[0][1], 2)),
-                                (round(segment.coords[1][0], 2), round(segment.coords[1][1], 2)),
+                                (round(float(p1.x), 2), round(float(p1.y), 2)),
+                                (round(float(p2.x), 2), round(float(p2.y), 2)),
                             ]
                         )
                     )
-            elif kind == "c" and close_door_arcs:
-                segments.extend(_curve_closure_segments(item))
-
+                elif kind == "qu":
+                    for segment in _quad_segments(item[1]):
+                        segments.append(
+                            LineString(
+                                [
+                                    (round(segment.coords[0][0], 2), round(segment.coords[0][1], 2)),
+                                    (round(segment.coords[1][0], 2), round(segment.coords[1][1], 2)),
+                                ]
+                            )
+                        )
+                elif kind == "c" and close_door_arcs:
+                    segments.extend(_curve_closure_segments(item))
     doc.close()
 
-    if not segments:
+    if use_door_gap_bridges:
+        if not segment_tuples:
+            return []
+        segments = [LineString([start, end]) for start, end in sorted(set(segment_tuples))]
+    elif not segments:
         return []
-
     polygons = [
         polygon
         for polygon in polygonize(unary_union(segments))
@@ -430,10 +624,26 @@ def _assign_exact_area(
     area_sqm: float,
     method: str,
     confidence: float,
+    geometry_refs: List[Tuple[str, int]] | None = None,
 ) -> None:
     item.area_value = round(area_sqm, 2)
     item.area_method = method
     item.area_confidence = confidence
+    item.area_geometry_refs = list(geometry_refs or [])
+
+
+def _assign_text_embedded_area(item: TextItem) -> None:
+    item.area_value = round(item.embedded_area_value or 0.0, 2)
+    item.area_method = "text_embedded_area"
+    item.area_confidence = 0.6
+    item.area_geometry_refs = []
+
+
+def _assign_unresolved(item: TextItem) -> None:
+    item.area_value = None
+    item.area_method = "unresolved"
+    item.area_confidence = 0.0
+    item.area_geometry_refs = []
 
 
 def _polygon_fill_ratio(polygon: Polygon) -> float:
@@ -523,6 +733,7 @@ def _assign_sparse_isolated_fragment_areas(
             continue
 
         total_area_sqm = 0.0
+        assigned_indices: List[int] = []
         for index in tiny_fragment_indices:
             polygon = polygons[index]
             distance = point.distance(polygon)
@@ -542,9 +753,16 @@ def _assign_sparse_isolated_fragment_areas(
                 continue
 
             total_area_sqm += polygon_areas_sqm[index]
+            assigned_indices.append(index)
 
         if total_area_sqm >= SPARSE_FRAGMENT_MIN_AREA_SQM:
-            _assign_exact_area(item, total_area_sqm, "vector_sparse_fragment_fallback", 0.24)
+            _assign_exact_area(
+                item,
+                total_area_sqm,
+                "vector_sparse_fragment_fallback",
+                0.24,
+                geometry_refs=[("enhanced", index) for index in assigned_indices],
+            )
 
 
 def _reopen_networked_closed_gap_labels(
@@ -575,9 +793,7 @@ def _reopen_networked_closed_gap_labels(
             len(neighbor_indices) >= NETWORKED_CLOSED_GAP_MIN_NEIGHBORS
             and neighbor_area_sqm >= (polygon_area_sqm * NETWORKED_CLOSED_GAP_AREA_RATIO)
         ):
-            item.area_value = None
-            item.area_method = "unresolved"
-            item.area_confidence = 0.0
+            _assign_unresolved(item)
 
 
 def _assign_direct_second_pass_areas(
@@ -602,7 +818,13 @@ def _assign_direct_second_pass_areas(
         if area_sqm > SECOND_PASS_DIRECT_MAX_AREA_SQM:
             continue
 
-        _assign_exact_area(item, area_sqm, "vector_polygon_closed_gap", 0.72)
+        _assign_exact_area(
+            item,
+            area_sqm,
+            "vector_polygon_closed_gap",
+            0.72,
+            geometry_refs=[("door_aware", polygon_index)],
+        )
 
 
 def _identify_fragment_rich_labels(
@@ -649,6 +871,7 @@ def _preassign_fragment_rich_clusters(
     for rich_item in rich_items:
         point = active_points[id(rich_item)]
         total_area_sqm = 0.0
+        assigned_indices: List[int] = []
 
         for index in candidate_indices:
             if index in claimed_indices:
@@ -681,9 +904,16 @@ def _preassign_fragment_rich_clusters(
             if id(best_item) == id(rich_item) or target_distance <= ((best_distance * 1.12) + 4.0):
                 total_area_sqm += polygon_areas_sqm[index]
                 claimed_indices.add(index)
+                assigned_indices.append(index)
 
         if total_area_sqm >= OPEN_FRAGMENT_MIN_ASSIGN_AREA_SQM:
-            _assign_exact_area(rich_item, total_area_sqm, "vector_fragment_cluster", 0.48)
+            _assign_exact_area(
+                rich_item,
+                total_area_sqm,
+                "vector_fragment_cluster",
+                0.48,
+                geometry_refs=[("enhanced", index) for index in assigned_indices],
+            )
 
     return claimed_indices
 
@@ -707,6 +937,7 @@ def _assign_fragment_partition_areas(
 
     active_items = [item for item in unresolved_items if item.area_value is None]
     item_area_totals: Dict[int, float] = defaultdict(float)
+    item_geometry_refs: Dict[int, set[int]] = defaultdict(set)
     deferred_indices: set[int] = set()
 
     for index in candidate_indices:
@@ -735,7 +966,9 @@ def _assign_fragment_partition_areas(
             continue
 
         if len(nearby) == 1:
-            item_area_totals[id(nearby[0][0])] += area_sqm
+            winner = nearby[0][0]
+            item_area_totals[id(winner)] += area_sqm
+            item_geometry_refs[id(winner)].add(index)
             continue
 
         weights = [(item, 1.0 / max(distance, 5.0)) for item, distance in nearby]
@@ -745,12 +978,19 @@ def _assign_fragment_partition_areas(
 
         for item, weight in weights:
             item_area_totals[id(item)] += area_sqm * (weight / total_weight)
+            item_geometry_refs[id(item)].add(index)
 
     for item in active_items:
         area_sqm = item_area_totals.get(id(item), 0.0)
         if area_sqm < OPEN_FRAGMENT_MIN_ASSIGN_AREA_SQM:
             continue
-        _assign_exact_area(item, area_sqm, "vector_open_fragment_partition", 0.42)
+        _assign_exact_area(
+            item,
+            area_sqm,
+            "vector_open_fragment_partition",
+            0.42,
+            geometry_refs=[("enhanced", index) for index in sorted(item_geometry_refs.get(id(item), set()))],
+        )
 
     for item in active_items:
         current_area_sqm = item.area_value or 0.0
@@ -774,7 +1014,13 @@ def _assign_fragment_partition_areas(
         if fallback_area_sqm > AMBIGUOUS_FRAGMENT_AREA_SQM and fill_ratio < AMBIGUOUS_FRAGMENT_FILL_RATIO:
             fallback_area_sqm *= SHARED_FRAGMENT_FALLBACK_FACTOR
 
-        _assign_exact_area(item, fallback_area_sqm, "vector_shared_fragment_fallback", 0.28)
+        _assign_exact_area(
+            item,
+            fallback_area_sqm,
+            "vector_shared_fragment_fallback",
+            0.28,
+            geometry_refs=[("enhanced", fallback_index)],
+        )
 
 
 def _assign_residual_open_area(
@@ -834,6 +1080,7 @@ def _assign_residual_open_area(
                 item.area_value = round(residual_area_sqm * share, 2)
                 item.area_method = "vector_open_residual_partition"
                 item.area_confidence = 0.24
+                item.area_geometry_refs = [("enhanced", parent_index)]
             continue
 
         ranked_items = sorted(
@@ -852,6 +1099,7 @@ def _assign_residual_open_area(
         winner.area_value = round((winner.area_value or 0.0) + residual_area_sqm, 2)
         winner.area_method = "vector_open_residual"
         winner.area_confidence = 0.33
+        winner.area_geometry_refs = [("enhanced", parent_index)]
 
 
 def _estimate_residual_partition_weights(
@@ -926,14 +1174,10 @@ def estimate_page_label_areas(
     if scale_ratio is None or not polygons:
         for item in label_candidates:
             if item.embedded_area_value is not None:
-                item.area_value = round(item.embedded_area_value, 2)
-                item.area_method = "text_embedded_area"
-                item.area_confidence = 0.6
+                _assign_text_embedded_area(item)
                 resolved_count += 1
             else:
-                item.area_value = None
-                item.area_method = "unresolved"
-                item.area_confidence = 0.0
+                _assign_unresolved(item)
                 unresolved_count += 1
 
         return {
@@ -949,27 +1193,25 @@ def estimate_page_label_areas(
 
         if not containing_indices:
             if item.embedded_area_value is not None:
-                item.area_value = round(item.embedded_area_value, 2)
-                item.area_method = "text_embedded_area"
-                item.area_confidence = 0.6
+                _assign_text_embedded_area(item)
             else:
-                item.area_value = None
-                item.area_method = "unresolved"
-                item.area_confidence = 0.0
+                _assign_unresolved(item)
             continue
 
         area_sqm = polygon_areas_sqm[containing_indices[0]]
         if area_sqm <= MAX_EXACT_VECTOR_AREA_SQM:
-            _assign_exact_area(item, area_sqm, "vector_polygon_exact", 0.95)
+            _assign_exact_area(
+                item,
+                area_sqm,
+                "vector_polygon_exact",
+                0.95,
+                geometry_refs=[("base", containing_indices[0])],
+            )
         else:
             if item.embedded_area_value is not None:
-                item.area_value = round(item.embedded_area_value, 2)
-                item.area_method = "text_embedded_area"
-                item.area_confidence = 0.6
+                _assign_text_embedded_area(item)
             else:
-                item.area_value = None
-                item.area_method = "unresolved"
-                item.area_confidence = 0.0
+                _assign_unresolved(item)
 
     high_complexity_page = len(polygons) > 2000 and len(label_candidates) > 150
     if high_complexity_page:
@@ -982,25 +1224,36 @@ def estimate_page_label_areas(
             "unresolved_area_count": unresolved_count,
         }
 
+    door_aware_polygons = build_page_vector_polygons(
+        pdf_path,
+        page_number,
+        close_door_arcs=True,
+        use_door_gap_bridges=True,
+    )
+    door_aware_polygon_tree = STRtree(door_aware_polygons) if door_aware_polygons else None
+    door_aware_polygon_areas_sqm = (
+        [_area_pdf_to_sqm(polygon.area, scale_ratio) for polygon in door_aware_polygons] if scale_ratio else []
+    )
+
+    if door_aware_polygons and door_aware_polygon_areas_sqm:
+        _assign_direct_second_pass_areas(
+            label_candidates,
+            door_aware_polygons,
+            door_aware_polygon_areas_sqm,
+            door_aware_polygon_tree,
+        )
+        _reopen_networked_closed_gap_labels(
+            label_candidates,
+            door_aware_polygons,
+            door_aware_polygon_areas_sqm,
+            door_aware_polygon_tree,
+        )
+
     enhanced_polygons = build_page_vector_polygons(pdf_path, page_number, close_door_arcs=True)
     enhanced_polygon_tree = STRtree(enhanced_polygons) if enhanced_polygons else None
     enhanced_polygon_areas_sqm = (
         [_area_pdf_to_sqm(polygon.area, scale_ratio) for polygon in enhanced_polygons] if scale_ratio else []
     )
-
-    if enhanced_polygons and enhanced_polygon_areas_sqm:
-        _assign_direct_second_pass_areas(
-            label_candidates,
-            enhanced_polygons,
-            enhanced_polygon_areas_sqm,
-            enhanced_polygon_tree,
-        )
-        _reopen_networked_closed_gap_labels(
-            label_candidates,
-            enhanced_polygons,
-            enhanced_polygon_areas_sqm,
-            enhanced_polygon_tree,
-        )
 
     unresolved_items = [item for item in label_candidates if item.area_value is None]
     resolved_items = [item for item in label_candidates if item.area_value is not None]
@@ -1034,9 +1287,7 @@ def estimate_page_label_areas(
 
     for item in label_candidates:
         if item.area_value is None and item.embedded_area_value is not None:
-            item.area_value = round(item.embedded_area_value, 2)
-            item.area_method = "text_embedded_area"
-            item.area_confidence = 0.6
+            _assign_text_embedded_area(item)
 
     resolved_count = sum(1 for item in label_candidates if item.area_value is not None)
     unresolved_count = len(label_candidates) - resolved_count
