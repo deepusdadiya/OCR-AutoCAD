@@ -6,7 +6,7 @@ from statistics import median
 from typing import Any, Dict, List, Tuple
 
 import fitz
-from shapely.geometry import LineString, Point, Polygon
+from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import polygonize, unary_union
 from shapely.strtree import STRtree
 
@@ -22,9 +22,17 @@ from config import (
     DOOR_GAP_MIN_OVERLAP_PDF,
     MAX_EXACT_VECTOR_AREA_SQM,
     SECOND_PASS_DIRECT_MAX_AREA_SQM,
+    SECOND_PASS_SINGLE_LABEL_MAX_AREA_SQM,
+    SECOND_PASS_SINGLE_LABEL_MIN_FILL_RATIO,
     OPEN_FRAGMENT_MAX_AREA_SQM,
     OPEN_FRAGMENT_NEARBY_DISTANCE_PDF,
     OPEN_FRAGMENT_MIN_ASSIGN_AREA_SQM,
+    SHARED_PARENT_SUBREGION_MIN_GAIN_SQM,
+    SHARED_PARENT_SUBREGION_MIN_GAIN_RATIO,
+    SHARED_PARENT_FRAGMENT_PROMOTION_MIN_GAIN_SQM,
+    SHARED_PARENT_FRAGMENT_PROMOTION_MIN_GAIN_RATIO,
+    SHARED_PARENT_REMAINDER_MAX_AREA_SQM,
+    SHARED_PARENT_REMAINDER_MAX_LABELS,
     SPARSE_FRAGMENT_ASSIGN_RADIUS_PDF,
     SPARSE_FRAGMENT_MIN_AREA_SQM,
     OPEN_RESIDUAL_MIN_AREA_SQM,
@@ -625,11 +633,13 @@ def _assign_exact_area(
     method: str,
     confidence: float,
     geometry_refs: List[Tuple[str, int]] | None = None,
+    geometry_shapes: List[Any] | None = None,
 ) -> None:
     item.area_value = round(area_sqm, 2)
     item.area_method = method
     item.area_confidence = confidence
     item.area_geometry_refs = list(geometry_refs or [])
+    item.area_geometry_shapes = list(geometry_shapes or [])
 
 
 def _assign_text_embedded_area(item: TextItem) -> None:
@@ -637,6 +647,7 @@ def _assign_text_embedded_area(item: TextItem) -> None:
     item.area_method = "text_embedded_area"
     item.area_confidence = 0.6
     item.area_geometry_refs = []
+    item.area_geometry_shapes = []
 
 
 def _assign_unresolved(item: TextItem) -> None:
@@ -644,6 +655,7 @@ def _assign_unresolved(item: TextItem) -> None:
     item.area_method = "unresolved"
     item.area_confidence = 0.0
     item.area_geometry_refs = []
+    item.area_geometry_shapes = []
 
 
 def _polygon_fill_ratio(polygon: Polygon) -> float:
@@ -802,11 +814,13 @@ def _assign_direct_second_pass_areas(
     enhanced_polygon_areas_sqm: List[float],
     enhanced_polygon_tree: STRtree | None = None,
 ) -> None:
+    item_points = {id(item): Point(item.cx, item.cy) for item in label_candidates}
+
     for item in label_candidates:
         if item.area_value is not None:
             continue
 
-        point = Point(item.cx, item.cy)
+        point = item_points[id(item)]
         polygon_index, area_sqm = _smallest_containing_area_sqm(
             point,
             enhanced_polygons,
@@ -815,8 +829,21 @@ def _assign_direct_second_pass_areas(
         )
         if polygon_index is None or area_sqm is None:
             continue
+
+        polygon = enhanced_polygons[polygon_index]
         if area_sqm > SECOND_PASS_DIRECT_MAX_AREA_SQM:
-            continue
+            if area_sqm > SECOND_PASS_SINGLE_LABEL_MAX_AREA_SQM:
+                continue
+            if _polygon_fill_ratio(polygon) < SECOND_PASS_SINGLE_LABEL_MIN_FILL_RATIO:
+                continue
+
+            containing_label_count = sum(
+                1
+                for other_item in label_candidates
+                if polygon.buffer(0.1).contains(item_points[id(other_item)])
+            )
+            if containing_label_count != 1:
+                continue
 
         _assign_exact_area(
             item,
@@ -1021,6 +1048,447 @@ def _assign_fragment_partition_areas(
             0.28,
             geometry_refs=[("enhanced", fallback_index)],
         )
+
+
+def _iter_polygon_parts(geometry: Any) -> List[Polygon]:
+    if geometry is None or geometry.is_empty:
+        return []
+    if geometry.geom_type == "Polygon":
+        return [geometry]
+
+    polygons: List[Polygon] = []
+    for part in getattr(geometry, "geoms", []):
+        polygons.extend(_iter_polygon_parts(part))
+    return polygons
+
+
+def _item_assignment_geometry(
+    item: TextItem,
+    polygon_sets: Dict[str, List[Polygon]],
+) -> Any | None:
+    if item.area_geometry_shapes:
+        return unary_union(item.area_geometry_shapes).buffer(0)
+
+    polygons: List[Polygon] = []
+    seen_refs: set[Tuple[str, int]] = set()
+    for ref_name, polygon_index in item.area_geometry_refs:
+        ref_key = (ref_name, polygon_index)
+        if ref_key in seen_refs:
+            continue
+        seen_refs.add(ref_key)
+
+        source_polygons = polygon_sets.get(ref_name)
+        if source_polygons is None:
+            continue
+        if 0 <= polygon_index < len(source_polygons):
+            polygons.append(source_polygons[polygon_index])
+
+    if not polygons:
+        return None
+
+    return unary_union(polygons).buffer(0)
+
+
+def _promote_shared_parent_subregions(
+    all_items: List[TextItem],
+    candidate_items: List[TextItem],
+    polygon_sets: Dict[str, List[Polygon]],
+    door_aware_polygons: List[Polygon],
+    door_aware_polygon_areas_sqm: List[float],
+    scale_ratio: float,
+    door_aware_polygon_tree: STRtree | None = None,
+) -> None:
+    if not candidate_items or not door_aware_polygons:
+        return
+
+    reliable_subtraction_methods = {
+        "vector_polygon_exact",
+        "vector_polygon_closed_gap",
+        "vector_fragment_cluster",
+        "vector_polygon_subtracted_shared_parent",
+    }
+    fragment_based_methods = {
+        "vector_open_fragment_partition",
+        "vector_sparse_fragment_fallback",
+        "vector_shared_fragment_fallback",
+    }
+    item_points = {id(item): Point(item.cx, item.cy) for item in all_items}
+
+    for item in candidate_items:
+        point = item_points[id(item)]
+        parent_index, parent_area_sqm = _smallest_containing_area_sqm(
+            point,
+            door_aware_polygons,
+            door_aware_polygon_areas_sqm,
+            door_aware_polygon_tree,
+        )
+        if parent_index is None or parent_area_sqm is None:
+            continue
+
+        parent_polygon = door_aware_polygons[parent_index]
+        contained_items = [
+            other_item
+            for other_item in all_items
+            if parent_polygon.buffer(0.1).contains(item_points[id(other_item)])
+        ]
+        if len(contained_items) <= 1:
+            continue
+
+        subtraction_geometries: List[Any] = []
+        for other_item in contained_items:
+            if id(other_item) == id(item):
+                continue
+            if other_item.area_method not in reliable_subtraction_methods:
+                continue
+
+            other_geometry = _item_assignment_geometry(other_item, polygon_sets)
+            if other_geometry is None or other_geometry.is_empty:
+                continue
+
+            subtraction_geometries.append(other_geometry)
+
+        if not subtraction_geometries:
+            continue
+
+        remaining_geometry = parent_polygon.difference(unary_union(subtraction_geometries)).buffer(0)
+        containing_parts = [
+            part
+            for part in _iter_polygon_parts(remaining_geometry)
+            if part.area > 1.0 and part.buffer(0.1).contains(point)
+        ]
+        if not containing_parts:
+            continue
+
+        candidate_polygon = min(containing_parts, key=lambda polygon: polygon.area)
+        candidate_area_sqm = _area_pdf_to_sqm(candidate_polygon.area, scale_ratio)
+        if candidate_area_sqm < OPEN_FRAGMENT_MIN_ASSIGN_AREA_SQM:
+            continue
+
+        competing_labels = [
+            other_item
+            for other_item in all_items
+            if id(other_item) != id(item)
+            and candidate_polygon.buffer(0.1).contains(item_points[id(other_item)])
+        ]
+        if competing_labels:
+            continue
+
+        current_area_sqm = item.area_value or 0.0
+        if current_area_sqm > 0:
+            area_gain_sqm = candidate_area_sqm - current_area_sqm
+            area_gain_ratio = candidate_area_sqm / max(current_area_sqm, 1e-6)
+
+            if item.area_method in fragment_based_methods:
+                if (
+                    area_gain_sqm < SHARED_PARENT_FRAGMENT_PROMOTION_MIN_GAIN_SQM
+                    and area_gain_ratio < SHARED_PARENT_FRAGMENT_PROMOTION_MIN_GAIN_RATIO
+                ):
+                    continue
+            elif (
+                area_gain_sqm < SHARED_PARENT_SUBREGION_MIN_GAIN_SQM
+                and area_gain_ratio < SHARED_PARENT_SUBREGION_MIN_GAIN_RATIO
+            ):
+                continue
+
+        _assign_exact_area(
+            item,
+            candidate_area_sqm,
+            "vector_polygon_subtracted_shared_parent",
+            0.66,
+            geometry_refs=[("door_aware", parent_index)],
+            geometry_shapes=[candidate_polygon],
+        )
+
+
+def _promote_shared_parent_remainders(
+    all_items: List[TextItem],
+    candidate_items: List[TextItem],
+    polygon_sets: Dict[str, List[Polygon]],
+    door_aware_polygons: List[Polygon],
+    door_aware_polygon_areas_sqm: List[float],
+    scale_ratio: float,
+    door_aware_polygon_tree: STRtree | None = None,
+) -> None:
+    if not candidate_items or not door_aware_polygons:
+        return
+
+    reliable_subtraction_methods = {
+        "vector_polygon_exact",
+        "vector_polygon_closed_gap",
+        "vector_polygon_subtracted_shared_parent",
+    }
+    item_points = {id(item): Point(item.cx, item.cy) for item in all_items}
+
+    for item in candidate_items:
+        point = item_points[id(item)]
+        parent_index, parent_area_sqm = _smallest_containing_area_sqm(
+            point,
+            door_aware_polygons,
+            door_aware_polygon_areas_sqm,
+            door_aware_polygon_tree,
+        )
+        if parent_index is None or parent_area_sqm is None:
+            continue
+        if parent_area_sqm > SHARED_PARENT_REMAINDER_MAX_AREA_SQM:
+            continue
+
+        parent_polygon = door_aware_polygons[parent_index]
+        contained_items = [
+            other_item
+            for other_item in all_items
+            if parent_polygon.buffer(0.1).contains(item_points[id(other_item)])
+        ]
+        if len(contained_items) < 2 or len(contained_items) > SHARED_PARENT_REMAINDER_MAX_LABELS:
+            continue
+
+        subtraction_geometries: List[Any] = []
+        for other_item in contained_items:
+            if id(other_item) == id(item):
+                continue
+            if other_item.area_method not in reliable_subtraction_methods:
+                continue
+
+            other_geometry = _item_assignment_geometry(other_item, polygon_sets)
+            if other_geometry is None or other_geometry.is_empty:
+                continue
+
+            subtraction_geometries.append(other_geometry)
+
+        if not subtraction_geometries:
+            continue
+
+        remaining_geometry = parent_polygon.difference(unary_union(subtraction_geometries)).buffer(0)
+        containing_parts = [
+            part
+            for part in _iter_polygon_parts(remaining_geometry)
+            if part.area > 1.0 and part.buffer(0.1).contains(point)
+        ]
+        if not containing_parts:
+            continue
+
+        candidate_polygon = min(containing_parts, key=lambda polygon: polygon.area)
+        candidate_area_sqm = _area_pdf_to_sqm(candidate_polygon.area, scale_ratio)
+        if candidate_area_sqm < OPEN_FRAGMENT_MIN_ASSIGN_AREA_SQM:
+            continue
+
+        competing_labels = [
+            other_item
+            for other_item in all_items
+            if id(other_item) != id(item)
+            and candidate_polygon.buffer(0.1).contains(item_points[id(other_item)])
+        ]
+        if competing_labels:
+            continue
+
+        _assign_exact_area(
+            item,
+            candidate_area_sqm,
+            "vector_polygon_subtracted_shared_parent",
+            0.66,
+            geometry_refs=[("door_aware", parent_index)],
+            geometry_shapes=[candidate_polygon],
+        )
+
+
+def _shared_parent_cross_section_length(
+    geometry: Polygon,
+    axis: str,
+    position: float,
+) -> float:
+    min_x, min_y, max_x, max_y = geometry.bounds
+    if axis == "x":
+        cut_line = LineString([(position, min_y - 10.0), (position, max_y + 10.0)])
+    else:
+        cut_line = LineString([(min_x - 10.0, position), (max_x + 10.0, position)])
+
+    intersection = geometry.intersection(cut_line)
+    if intersection.is_empty:
+        return 0.0
+    return float(intersection.length)
+
+
+def _split_shared_parent_by_throat(
+    geometry: Polygon,
+    first_item: TextItem,
+    second_item: TextItem,
+) -> Tuple[Polygon | None, Polygon | None]:
+    first_point = Point(first_item.cx, first_item.cy)
+    second_point = Point(second_item.cx, second_item.cy)
+
+    axis = "x" if abs(first_item.cx - second_item.cx) >= abs(first_item.cy - second_item.cy) else "y"
+    first_coord = first_item.cx if axis == "x" else first_item.cy
+    second_coord = second_item.cx if axis == "x" else second_item.cy
+    lower_coord = min(first_coord, second_coord)
+    upper_coord = max(first_coord, second_coord)
+
+    if upper_coord - lower_coord < 4.0:
+        return None, None
+
+    candidate_positions: List[Tuple[float, float]] = []
+    position = int(lower_coord) + 1
+    while position < int(upper_coord):
+        cross_section_length = _shared_parent_cross_section_length(geometry, axis, float(position))
+        if cross_section_length > 0.0:
+            candidate_positions.append((float(position), cross_section_length))
+        position += 1
+
+    if not candidate_positions:
+        return None, None
+
+    min_length = min(length for _, length in candidate_positions)
+    throat_positions = [
+        position
+        for position, length in candidate_positions
+        if abs(length - min_length) <= 0.5
+    ]
+    if not throat_positions:
+        return None, None
+
+    cut_position = max(throat_positions)
+    if axis == "x":
+        lower_piece = geometry.intersection(box(-1_000_000.0, -1_000_000.0, cut_position, 1_000_000.0)).buffer(0)
+        upper_piece = geometry.intersection(box(cut_position, -1_000_000.0, 1_000_000.0, 1_000_000.0)).buffer(0)
+    else:
+        lower_piece = geometry.intersection(box(-1_000_000.0, -1_000_000.0, 1_000_000.0, cut_position)).buffer(0)
+        upper_piece = geometry.intersection(box(-1_000_000.0, cut_position, 1_000_000.0, 1_000_000.0)).buffer(0)
+
+    lower_target, upper_target = (
+        (first_item, second_item)
+        if first_coord <= second_coord
+        else (second_item, first_item)
+    )
+
+    lower_polygon = next(
+        (
+            part
+            for part in _iter_polygon_parts(lower_piece)
+            if part.area > 1.0 and part.buffer(0.1).contains(Point(lower_target.cx, lower_target.cy))
+        ),
+        None,
+    )
+    upper_polygon = next(
+        (
+            part
+            for part in _iter_polygon_parts(upper_piece)
+            if part.area > 1.0 and part.buffer(0.1).contains(Point(upper_target.cx, upper_target.cy))
+        ),
+        None,
+    )
+
+    if lower_polygon is None or upper_polygon is None:
+        return None, None
+
+    return (
+        lower_polygon if id(lower_target) == id(first_item) else upper_polygon,
+        upper_polygon if id(upper_target) == id(second_item) else lower_polygon,
+    )
+
+
+def _promote_two_label_shared_parent_pairs(
+    all_items: List[TextItem],
+    polygon_sets: Dict[str, List[Polygon]],
+    door_aware_polygons: List[Polygon],
+    door_aware_polygon_areas_sqm: List[float],
+    scale_ratio: float,
+    door_aware_polygon_tree: STRtree | None = None,
+) -> None:
+    if not door_aware_polygons:
+        return
+
+    target_methods = {
+        "vector_fragment_cluster",
+        "vector_open_fragment_partition",
+        "vector_sparse_fragment_fallback",
+        "vector_shared_fragment_fallback",
+        "vector_polygon_subtracted_shared_parent",
+    }
+    reliable_subtraction_methods = {
+        "vector_polygon_exact",
+        "vector_polygon_closed_gap",
+        "vector_polygon_subtracted_shared_parent",
+    }
+    item_points = {id(item): Point(item.cx, item.cy) for item in all_items}
+
+    parent_groups: Dict[int, List[TextItem]] = defaultdict(list)
+    for item in all_items:
+        if item.area_method not in target_methods:
+            continue
+
+        point = item_points[id(item)]
+        parent_index, parent_area_sqm = _smallest_containing_area_sqm(
+            point,
+            door_aware_polygons,
+            door_aware_polygon_areas_sqm,
+            door_aware_polygon_tree,
+        )
+        if parent_index is None or parent_area_sqm is None:
+            continue
+        if parent_area_sqm > SHARED_PARENT_REMAINDER_MAX_AREA_SQM:
+            continue
+
+        parent_groups[parent_index].append(item)
+
+    for parent_index, candidate_items in parent_groups.items():
+        if len(candidate_items) != 2:
+            continue
+
+        parent_polygon = door_aware_polygons[parent_index]
+        contained_items = [
+            other_item
+            for other_item in all_items
+            if parent_polygon.buffer(0.1).contains(item_points[id(other_item)])
+        ]
+        if len(contained_items) < 2 or len(contained_items) > SHARED_PARENT_REMAINDER_MAX_LABELS:
+            continue
+
+        subtraction_geometries: List[Any] = []
+        for other_item in contained_items:
+            if any(id(other_item) == id(candidate_item) for candidate_item in candidate_items):
+                continue
+            if other_item.area_method not in reliable_subtraction_methods:
+                continue
+
+            other_geometry = _item_assignment_geometry(other_item, polygon_sets)
+            if other_geometry is None or other_geometry.is_empty:
+                continue
+
+            subtraction_geometries.append(other_geometry)
+
+        remaining_geometry = (
+            parent_polygon.difference(unary_union(subtraction_geometries)).buffer(0)
+            if subtraction_geometries
+            else parent_polygon
+        )
+        if remaining_geometry.is_empty or remaining_geometry.geom_type != "Polygon":
+            continue
+
+        first_item, second_item = candidate_items
+        first_polygon, second_polygon = _split_shared_parent_by_throat(
+            remaining_geometry,
+            first_item,
+            second_item,
+        )
+        if first_polygon is None or second_polygon is None:
+            continue
+
+        for item, polygon in [(first_item, first_polygon), (second_item, second_polygon)]:
+            competing_labels = [
+                other_item
+                for other_item in all_items
+                if id(other_item) != id(item)
+                and polygon.buffer(0.1).contains(item_points[id(other_item)])
+            ]
+            if competing_labels:
+                continue
+
+            _assign_exact_area(
+                item,
+                _area_pdf_to_sqm(polygon.area, scale_ratio),
+                "vector_polygon_subtracted_shared_parent",
+                0.68,
+                geometry_refs=[("door_aware", parent_index)],
+                geometry_shapes=[polygon],
+            )
 
 
 def _assign_residual_open_area(
@@ -1273,6 +1741,65 @@ def estimate_page_label_areas(
             enhanced_polygons,
             enhanced_polygon_areas_sqm,
             enhanced_polygon_tree,
+        )
+
+    promotable_items = [
+        item
+        for item in label_candidates
+        if item.area_method in {
+            "unresolved",
+            "vector_open_fragment_partition",
+            "vector_sparse_fragment_fallback",
+            "vector_shared_fragment_fallback",
+        }
+    ]
+    if promotable_items and door_aware_polygons:
+        _promote_shared_parent_subregions(
+            all_items=label_candidates,
+            candidate_items=promotable_items,
+            polygon_sets={
+                "base": polygons,
+                "door_aware": door_aware_polygons,
+                "enhanced": enhanced_polygons,
+            },
+            door_aware_polygons=door_aware_polygons,
+            door_aware_polygon_areas_sqm=door_aware_polygon_areas_sqm,
+            scale_ratio=scale_ratio,
+            door_aware_polygon_tree=door_aware_polygon_tree,
+        )
+        _promote_shared_parent_remainders(
+            all_items=label_candidates,
+            candidate_items=[
+                item
+                for item in label_candidates
+                if item.area_method in {
+                    "vector_fragment_cluster",
+                    "vector_open_fragment_partition",
+                    "vector_sparse_fragment_fallback",
+                    "vector_shared_fragment_fallback",
+                }
+            ],
+            polygon_sets={
+                "base": polygons,
+                "door_aware": door_aware_polygons,
+                "enhanced": enhanced_polygons,
+            },
+            door_aware_polygons=door_aware_polygons,
+            door_aware_polygon_areas_sqm=door_aware_polygon_areas_sqm,
+            scale_ratio=scale_ratio,
+            door_aware_polygon_tree=door_aware_polygon_tree,
+        )
+        _promote_two_label_shared_parent_pairs(
+            all_items=label_candidates,
+            polygon_sets={
+                "base": polygons,
+                "door_aware": door_aware_polygons,
+                "enhanced": enhanced_polygons,
+            },
+            door_aware_polygons=door_aware_polygons,
+            door_aware_polygon_areas_sqm=door_aware_polygon_areas_sqm,
+            scale_ratio=scale_ratio,
+            door_aware_polygon_tree=door_aware_polygon_tree,
         )
 
     unresolved_items = [item for item in label_candidates if item.area_value is None]

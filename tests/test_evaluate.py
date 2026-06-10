@@ -56,6 +56,23 @@ class EvaluateTests(unittest.TestCase):
         self.assertTrue(comparison_df.loc[0, "Area_Matched"])
         self.assertFalse(comparison_df.loc[1, "Area_Matched"])
 
+    def test_duplicate_numbered_groups_match_best_area_pairing(self) -> None:
+        pred_df = pd.DataFrame(
+            [
+                {"Name": "PASSAGE #1", "Area (sqmm)": 4.45},
+                {"Name": "PASSAGE #2", "Area (sqmm)": 5.27},
+            ]
+        )
+        expected_csv_path = REPO_ROOT / "tests" / "fixtures" / "expected_duplicate_pairing.csv"
+        comparison_df = compare_with_expected(pred_df, str(expected_csv_path))
+
+        self.assertEqual(comparison_df.loc[0, "predicted_name"], "PASSAGE #2")
+        self.assertTrue(comparison_df.loc[0, "Name_Matched"])
+        self.assertTrue(comparison_df.loc[0, "Area_Matched"])
+        self.assertEqual(comparison_df.loc[1, "predicted_name"], "PASSAGE #1")
+        self.assertTrue(comparison_df.loc[1, "Name_Matched"])
+        self.assertTrue(comparison_df.loc[1, "Area_Matched"])
+
 
 if __name__ == "__main__":
     unittest.main()

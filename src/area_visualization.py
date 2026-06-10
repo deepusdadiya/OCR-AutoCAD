@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
+import fitz
 from PIL import Image, ImageDraw
 from shapely.geometry import Polygon
 
@@ -35,8 +36,17 @@ def _page_polygon_sets(pdf_path: str | Path, page_number: int) -> Dict[str, List
     }
 
 
+def _page_rotation_matrix(pdf_path: str | Path, page_number: int) -> fitz.Matrix:
+    doc = fitz.open(str(pdf_path))
+    page = doc[page_number]
+    rotation_matrix = fitz.Matrix(page.rotation_matrix)
+    doc.close()
+    return rotation_matrix
+
+
 def _scale_point(
     point: Tuple[float, float],
+    rotation_matrix: fitz.Matrix,
     page_size: Tuple[float, float],
     image_size: Tuple[int, int],
 ) -> Tuple[float, float]:
@@ -44,15 +54,18 @@ def _scale_point(
     image_w, image_h = image_size
     if page_w <= 0 or page_h <= 0:
         return point
+
+    rotated_point = fitz.Point(float(point[0]), float(point[1])) * rotation_matrix
     return (
-        float(point[0]) * image_w / page_w,
-        float(point[1]) * image_h / page_h,
+        float(rotated_point.x) * image_w / page_w,
+        float(rotated_point.y) * image_h / page_h,
     )
 
 
 def _draw_polygon_outline(
     draw: ImageDraw.ImageDraw,
     polygon: Polygon,
+    rotation_matrix: fitz.Matrix,
     page_size: Tuple[float, float],
     image_size: Tuple[int, int],
 ) -> None:
@@ -60,17 +73,18 @@ def _draw_polygon_outline(
     if len(coords) < 2:
         return
 
-    scaled = [_scale_point((x, y), page_size, image_size) for x, y in coords]
+    scaled = [_scale_point((x, y), rotation_matrix, page_size, image_size) for x, y in coords]
     draw.line(scaled, fill=BOUNDARY_COLOR, width=BOUNDARY_WIDTH)
 
 
 def _draw_center_marker(
     draw: ImageDraw.ImageDraw,
     item: TextItem,
+    rotation_matrix: fitz.Matrix,
     page_size: Tuple[float, float],
     image_size: Tuple[int, int],
 ) -> None:
-    cx, cy = _scale_point((item.cx, item.cy), page_size, image_size)
+    cx, cy = _scale_point((item.cx, item.cy), rotation_matrix, page_size, image_size)
     radius = 5
     draw.ellipse(
         [(cx - radius, cy - radius), (cx + radius, cy + radius)],
@@ -83,6 +97,22 @@ def _resolve_item_polygons(
     item: TextItem,
     polygon_sets: Dict[str, List[Polygon]],
 ) -> List[Polygon]:
+    if item.area_geometry_shapes:
+        polygons: List[Polygon] = []
+        for geometry in item.area_geometry_shapes:
+            if geometry is None or geometry.is_empty:
+                continue
+            if geometry.geom_type == "Polygon":
+                polygons.append(geometry)
+            else:
+                polygons.extend(
+                    part
+                    for part in getattr(geometry, "geoms", [])
+                    if getattr(part, "geom_type", "") == "Polygon"
+                )
+        if polygons:
+            return polygons
+
     polygons: List[Polygon] = []
     seen: set[Tuple[str, int]] = set()
 
@@ -117,12 +147,13 @@ def _collect_geometry_bounds(
 
 def _crop_image_for_geometry(
     image: Image.Image,
-    page_size: Tuple[float, float],
-    bounds_pdf: Tuple[float, float, float, float],
+    image_points: Sequence[Tuple[float, float]],
 ) -> Tuple[Image.Image, Tuple[int, int]]:
     image_w, image_h = image.size
-    min_x, min_y = _scale_point((bounds_pdf[0], bounds_pdf[1]), page_size, image.size)
-    max_x, max_y = _scale_point((bounds_pdf[2], bounds_pdf[3]), page_size, image.size)
+    min_x = min(point[0] for point in image_points)
+    min_y = min(point[1] for point in image_points)
+    max_x = max(point[0] for point in image_points)
+    max_y = max(point[1] for point in image_points)
 
     crop_box = (
         max(int(min_x) - CROP_PADDING_PX, 0),
@@ -142,8 +173,45 @@ def _add_caption_band(image: Image.Image, caption: str) -> Image.Image:
     return canvas
 
 
+def _bbox_image_points(
+    bbox: Tuple[float, float, float, float],
+    rotation_matrix: fitz.Matrix,
+    page_size: Tuple[float, float],
+    image_size: Tuple[int, int],
+) -> List[Tuple[float, float]]:
+    x0, y0, x1, y1 = bbox
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    return [_scale_point(point, rotation_matrix, page_size, image_size) for point in corners]
+
+
+def _polygon_image_points(
+    polygon: Polygon,
+    rotation_matrix: fitz.Matrix,
+    page_size: Tuple[float, float],
+    image_size: Tuple[int, int],
+) -> List[Tuple[float, float]]:
+    return [
+        _scale_point((x, y), rotation_matrix, page_size, image_size)
+        for x, y in polygon.exterior.coords
+    ]
+
+
+def _collect_geometry_image_points(
+    item: TextItem,
+    polygons: Sequence[Polygon],
+    rotation_matrix: fitz.Matrix,
+    page_size: Tuple[float, float],
+    image_size: Tuple[int, int],
+) -> List[Tuple[float, float]]:
+    image_points = _bbox_image_points(item.bbox, rotation_matrix, page_size, image_size)
+    for polygon in polygons:
+        image_points.extend(_polygon_image_points(polygon, rotation_matrix, page_size, image_size))
+    return image_points
+
+
 def _render_overview_page(
     page_image: Image.Image,
+    rotation_matrix: fitz.Matrix,
     page_size: Tuple[float, float],
     polygons: Iterable[Polygon],
     page_number: int,
@@ -151,12 +219,13 @@ def _render_overview_page(
     image = page_image.convert("RGB").copy()
     draw = ImageDraw.Draw(image)
     for polygon in polygons:
-        _draw_polygon_outline(draw, polygon, page_size, image.size)
+        _draw_polygon_outline(draw, polygon, rotation_matrix, page_size, image.size)
     return _add_caption_band(image, f"Page {page_number + 1} - final area boundaries")
 
 
 def _render_item_crop_page(
     page_image: Image.Image,
+    rotation_matrix: fitz.Matrix,
     page_size: Tuple[float, float],
     item: TextItem,
     polygons: Sequence[Polygon],
@@ -164,15 +233,15 @@ def _render_item_crop_page(
     image = page_image.convert("RGB").copy()
     draw = ImageDraw.Draw(image)
     for polygon in polygons:
-        _draw_polygon_outline(draw, polygon, page_size, image.size)
-    _draw_center_marker(draw, item, page_size, image.size)
+        _draw_polygon_outline(draw, polygon, rotation_matrix, page_size, image.size)
+    _draw_center_marker(draw, item, rotation_matrix, page_size, image.size)
 
-    crop_bounds = _collect_geometry_bounds(item, polygons)
-    cropped, offset = _crop_image_for_geometry(image, page_size, crop_bounds)
+    geometry_image_points = _collect_geometry_image_points(item, polygons, rotation_matrix, page_size, image.size)
+    cropped, offset = _crop_image_for_geometry(image, geometry_image_points)
 
     marker_image = cropped.copy()
     marker_draw = ImageDraw.Draw(marker_image)
-    local_center_x, local_center_y = _scale_point((item.cx, item.cy), page_size, image.size)
+    local_center_x, local_center_y = _scale_point((item.cx, item.cy), rotation_matrix, page_size, image.size)
     local_center_x -= offset[0]
     local_center_y -= offset[1]
     radius = 5
@@ -205,6 +274,7 @@ def save_area_boundaries_visualization_pdf(
         page_number = page_result["page_number"]
         page_image = page_result["full_image"]
         page_size = page_result["page_size"]
+        rotation_matrix = _page_rotation_matrix(pdf_path, page_number)
         polygon_sets = _page_polygon_sets(pdf_path, page_number)
         items = [
             item
@@ -227,6 +297,7 @@ def save_area_boundaries_visualization_pdf(
         rendered_pages.append(
             _render_overview_page(
                 page_image=page_image,
+                rotation_matrix=rotation_matrix,
                 page_size=page_size,
                 polygons=overview_polygons,
                 page_number=page_number,
@@ -240,6 +311,7 @@ def save_area_boundaries_visualization_pdf(
             rendered_pages.append(
                 _render_item_crop_page(
                     page_image=page_image,
+                    rotation_matrix=rotation_matrix,
                     page_size=page_size,
                     item=item,
                     polygons=item_polygons,

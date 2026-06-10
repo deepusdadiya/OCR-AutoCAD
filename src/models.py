@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Tuple, Optional
+from typing import Any, List, Tuple, Optional
 
 
 @dataclass
@@ -26,6 +26,7 @@ class TextItem:
     area_method: str = ""
     area_confidence: float = 0.0
     area_geometry_refs: List[Tuple[str, int]] = field(default_factory=list)
+    area_geometry_shapes: List[Any] = field(default_factory=list)
 
     @property
     def cx(self) -> float:
